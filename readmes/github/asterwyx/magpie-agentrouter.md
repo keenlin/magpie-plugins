@@ -108,20 +108,18 @@ Magpie 可能保留带历史读取时间的上次余额；那不是本次查询�
 - 模型按该模型目录中的 SDK/端点信息使用 Responses、Anthropic Messages 或 OpenAI-compatible API；Magpie 负责为客户端转换请求。
 - 默认发送兼容的 Codex 客户端请求头。
 - 默认无损内联完整 Responses 历史，保留工具关联和不透明状态。
-- 可选本地文字替换，只作用于发送副本。
 - 默认关闭的 `codex-session-repair` 有损资源清理。
 - 429 等待提示、内容拒绝和空响应诊断，不自动重试模型请求。
 
-提供商的四个布尔开关仍独立工作：
+提供商的三个布尔开关仍独立工作：
 
 | 选项 | 默认 |
 |---|---|
 | `send-codex-headers` | 开启 |
 | `portable-responses` | 开启 |
-| `text-filter` | 开启，没有词表时不替换 |
 | `codex-session-repair` | 关闭；开启可能丢失上下文 |
 
-`src/content-filter.local.json` 是私有词表，勿提交。将 [src/content-filter.example.json](src/content-filter.example.json) 复制为该文件名后填写。请求检查仍有 4 MiB / 2 秒边界，JSON 响应诊断保持 64 KiB / 2 秒边界。账号接口的响应最多读取 64 KiB，请求及正文读取最多 30 秒，异常不回显凭据。
+请求检查仍有 4 MiB / 2 秒边界，JSON 响应诊断保持 64 KiB / 2 秒边界。账号接口的响应最多读取 64 KiB，请求及正文读取最多 30 秒，异常不回显凭据。
 
 插件级 JSON 可配置 `retryAfterSeconds`（缺省 10 秒）和 `site`；账号已有 metadata 中的 `retryAfterSeconds` 可覆盖。上游等待提示优先，不新增重试。
 
