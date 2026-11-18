@@ -1,14 +1,13 @@
 # AgentRouter for Magpie
 
-**插件和提供商均显示为 AgentRouter，默认模型前缀是 `agentrouter`。** 认证只有一个流程：先点击国际站或国内站按钮，再一次提交四项凭据。没有站点下拉框、OAuth、浏览器登录、授权码回填或额外 Key 查询。
+**插件和提供商均显示为 AgentRouter，默认模型前缀是 `agentrouter`。** 认证只有一个流程：先点击国际站或国内站按钮，然后依次填写四个独立字段：
 
-一次性凭据包包含：账号、密码、API Key、系统访问令牌。为了匹配 Magpie 目前逐条显示问题的插件协议，四项以一个遮蔽的 JSON 输入框同时提交，不会拆成四轮提问：
+- **账号**
+- **密码**（遮蔽输入）
+- **API Key**（遮蔽输入）
+- **系统访问令牌**（遮蔽输入）
 
-```json
-{"username":"你的账号","password":"你的密码","apiKey":"sk-你的模型Key","accessToken":"你的系统访问令牌"}
-```
-
-账号密码仅用于登录/签到，API Key 用于模型调用，系统访问令牌用于余额查询。三种凭据在认证请求中互不混用。
+没有 JSON 凭据包、站点下拉框、OAuth、浏览器登录、授权码回填或额外 Key 查询。账号密码仅用于登录/签到，API Key 用于模型调用，系统访问令牌用于余额查询。三种凭据在认证请求中互不混用。
 
 ## 安装
 
@@ -48,7 +47,7 @@ magpie plugin login agentrouter
 kubectl exec -it -n magpie deploy/magpie -- magpie plugin login agentrouter
 ```
 
-首先通过两个**站点按钮**选择 AgentRouter 国际站或国内站；随后一个遮蔽输入框一次粘贴上述 JSON，四项凭据同时校验、一次提交。没有国家/站点下拉框、额外 Key、用户 ID 问题或浏览器步骤。Magpie 插件协议目前每次只显示一个原生问题，因此四项作为一个结构化遮蔽字段提交，而不是四个同时可见的独立输入框。
+首先通过两个**站点按钮**选择 AgentRouter 国际站或国内站；随后依次填写账号、密码、API Key、系统访问令牌四个独立字段。账号和密码用于站点登录，后两项分别遮蔽输入。没有国家/站点下拉框、JSON 凭据、额外 Key、用户 ID 问题或浏览器步骤。Magpie 插件协议目前一次只渲染一个原生问题，因此四个字段按顺序显示，但每个都是独立输入而不是塞进一个 JSON。
 
 提交后插件执行：
 
@@ -145,7 +144,7 @@ node --check account.mjs
 npm pack --dry-run
 ```
 
-认证测试覆盖四字段一次提交、无浏览器/回调、用途隔离、错误与取消、同账号校验及签到结果。模拟接口测试不等于真实 AgentRouter 账号实测。
+认证测试覆盖四个独立字段、最终一次授权、无浏览器/回调、用途隔离、错误与取消、同账号校验及签到结果。模拟接口测试不等于真实 AgentRouter 账号实测。
 
 `npm run test:magpie-ui` 是可选真实 Magpie 网页交互测试。只允许隔离的本地地址：指定 `MAGPIE_TEST_WEB_URL`、该沙盒的 `MAGPIE_TEST_WEB_KEY` 和外部安装的 `playwright-core` 的入口路径 `PLAYWRIGHT_MODULE`。须先启动只使用模拟账号的 Magpie/接口沙盒；该测试不接受真实账号凭据，也不在普通 `npm test` 或发布包中安装浏览器依赖。
 
