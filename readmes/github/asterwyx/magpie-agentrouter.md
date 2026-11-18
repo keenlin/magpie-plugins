@@ -57,7 +57,7 @@ kubectl exec -it -n magpie deploy/magpie -- magpie plugin login agentrouter
 
 不会调用 OAuth、`/api/token/`、令牌生成/轮换或注册接口。不创建或擅自选择模型 Key。接口明确拒绝、账号不一致、二次验证或验证码时，直接显示失败原因，**不会打开浏览器或提供浏览器登录作为后续步骤**。
 
-站点由登录第一步的按钮选择：国际站 `agentrouter.org` 或国内站 `ps.air-outer.com`。站点选择和四项凭据在同一次登录流程中完成；新账号保存对应的 API 地址。
+站点由登录第一步的按钮选择：国际站 `agentrouter.org` 或国内站 `ps.air-outer.com`。站点选择和四项凭据在同一次登录流程中完成；新账号保存对应的模型 API 地址。余额查询固定使用国际站 `/api/user/self`；登录和签到仍使用所选站点。
 
 四项凭据持久保存在运行 Magpie 的服务器认证文件中，并非仅在浏览器本机。仅在你信任的服务器保存，保护文件权限，不要发到聊天、截图、Issue 或 Git。API Key 只保存在 `key`，不重复写入 metadata；密码和系统令牌保存于 metadata，供后续 hook 使用。
 
@@ -71,8 +71,6 @@ magpie quota agentrouter
 
 插件、提供商名称均为 **AgentRouter**。插件声明的提供商 ID 是 `agentrouter`，模型前缀默认因此为 `agentrouter/<model-id>`。若 Magpie 中已有旧的同 ID 自定义提供商占用，Magpie 会自动把插件提供商显示为 `agentrouter-plugin`；移除或重命名旧的自定义提供商后，插件恢复使用 `agentrouter`。
 
-账户名使用登录时填写的邮箱（也就是用户名），不是 `/api/user/self` 返回的内部 `username` 字段，也不是 API Key 的掩码。余额查询失败时仍保留这个邮箱显示名。新登录会把邮箱保存到 `metadata.email`；已经保存的旧账号如果没有该字段，重新登录一次，或运行 `magpie accounts alias agentrouter "<账号 ID>" "登录邮箱"`。`magpie accounts` 行里 `·` 后面的内容是该账号的内部 ID，不是显示名。
-
 插件图标源图保存在 [assets/agentrouter.png](assets/agentrouter.png)，取自 AgentRouter 国内站 HTML 声明的 `/logo.png` favicon；包内以 PNG data URI 内嵌，不依赖浏览器或安装时联网获取。
 
 模型读取顺序：先用登录 API Key 请求该账号 `/v1/models` 获取可用模型，再读取所选站点 `/api/pricing` 的实时模型与端点类型；按精确模型 ID 合并 Magpie `models.dev` 元数据，GPT-5.6/GPT-6 规格则取对应模型供应商文档中的上下文、输入/输出上限、多模态、工具调用和思考档位。价格页决定哪些模型有实时条目，`/v1/models` 决定账号可见模型。上游模型规格不保证 AgentRouter 每个站点/分组均开放对应能力。来源没有提供的字段保持未知，不填入猜测值；接口暂不可用时仅用当前价格页模型列表作为兜底。
@@ -80,10 +78,10 @@ magpie quota agentrouter
 **凭据用途严格分离：**
 
 - 模型列表、模型调用只发送 API Key。
-- 余额查询只用系统访问令牌及登录取得的用户 ID。
+- 余额查询只用系统访问令牌及登录取得的用户 ID，固定请求国际站 `/api/user/self`。
 - 登录/签到只发送账号密码，不带 API Key、系统令牌或 Cookie。
 
-余额取 `quota`（剩余）与 `used_quota`（已消耗），默认每 500000 额度对应 1 美元。比例来自真实原始额度，美元显示四舍五入到分。缺字段、验证码、网络错误或令牌失效时显示“剩余额度未知”，**不使用密码重新登录、不用 API Key billing 回退、不把累计消耗推算成余额**。
+余额固定从国际站读取；登录和签到仍使用所选站点。余额取 `quota`（剩余）与 `used_quota`（已消耗），默认每 500000 额度对应 1 美元。比例来自真实原始额度，美元显示四舍五入到分。缺字段、验证码、网络错误或令牌失效时显示“剩余额度未知”，**不使用密码重新登录、不用 API Key billing 回退、不把累计消耗推算成余额**。
 
 Magpie 可能保留带历史读取时间的上次余额；那不是本次查询成功的证据。
 
