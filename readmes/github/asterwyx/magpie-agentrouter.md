@@ -71,6 +71,8 @@ magpie quota agentrouter
 
 插件、提供商名称均为 **AgentRouter**。插件声明的提供商 ID 是 `agentrouter`，模型前缀默认因此为 `agentrouter/<model-id>`。若 Magpie 中已有旧的同 ID 自定义提供商占用，Magpie 会自动把插件提供商显示为 `agentrouter-plugin`；移除或重命名旧的自定义提供商后，插件恢复使用 `agentrouter`。
 
+账户名使用登录时填写的邮箱（也就是用户名），不是 `/api/user/self` 返回的内部 `username` 字段，也不是 API Key 的掩码。余额查询失败时仍保留这个邮箱显示名。新登录会把邮箱保存到 `metadata.email`；已经保存的旧账号如果没有该字段，重新登录一次，或运行 `magpie accounts alias agentrouter "<账号 ID>" "登录邮箱"`。`magpie accounts` 行里 `·` 后面的内容是该账号的内部 ID，不是显示名。
+
 插件图标源图保存在 [assets/agentrouter.png](assets/agentrouter.png)，取自 AgentRouter 国内站 HTML 声明的 `/logo.png` favicon；包内以 PNG data URI 内嵌，不依赖浏览器或安装时联网获取。
 
 模型读取顺序：先用登录 API Key 请求该账号 `/v1/models` 获取可用模型，再读取所选站点 `/api/pricing` 的实时模型与端点类型；按精确模型 ID 合并 Magpie `models.dev` 元数据，GPT-5.6/GPT-6 规格则取对应模型供应商文档中的上下文、输入/输出上限、多模态、工具调用和思考档位。价格页决定哪些模型有实时条目，`/v1/models` 决定账号可见模型。上游模型规格不保证 AgentRouter 每个站点/分组均开放对应能力。来源没有提供的字段保持未知，不填入猜测值；接口暂不可用时仅用当前价格页模型列表作为兜底。
