@@ -35,7 +35,7 @@ kubectl exec -n magpie deploy/magpie -- magpie plugin list
 magpie plugin add /absolute/path/to/magpie-agentrouter
 ```
 
-Docker / Kubernetes 中须使用容器内可见的目录。源码没有编译步骤，发布包须包含 `account.mjs` 和所有请求/响应模块。
+Docker / Kubernetes 中须使用容器内可见的目录。源码没有编译步骤，入口和实现位于 `src/`，发布包须包含 `src/index.mjs`、`src/account.mjs` 及其余运行时模块。
 
 ## 配置账号
 
@@ -99,7 +99,7 @@ Magpie 可能保留带历史读取时间的上次余额；那不是本次查询�
 
 登录本身也可能触发当日额度，后续签到返回 `false` 是正常的无新增结果。系统访问令牌和 API Key 不参与签到。
 
-可选独立 Node.js 签到工具也已改为账号密码方式，保留私有目录、24 小时限频与失败暂停机制，见 [LOCAL-CHECKIN.md](LOCAL-CHECKIN.md)。普通 Magpie 使用不需要配置此工具。
+签到只通过 Magpie 的 `auth.checkin` 调用；插件不再包含独立本地签到工具或后台定时器。
 
 ## 保留的模型请求功能
 
@@ -121,7 +121,7 @@ Magpie 可能保留带历史读取时间的上次余额；那不是本次查询�
 | `text-filter` | 开启，没有词表时不替换 |
 | `codex-session-repair` | 关闭；开启可能丢失上下文 |
 
-`content-filter.local.json` 是私有词表，勿提交。示例见 [content-filter.example.json](content-filter.example.json)。请求检查仍有 4 MiB / 2 秒边界，JSON 响应诊断保持 64 KiB / 2 秒边界。账号接口的响应最多读取 64 KiB，请求及正文读取最多 30 秒，异常不回显凭据。
+`src/content-filter.local.json` 是私有词表，勿提交。将 [src/content-filter.example.json](src/content-filter.example.json) 复制为该文件名后填写。请求检查仍有 4 MiB / 2 秒边界，JSON 响应诊断保持 64 KiB / 2 秒边界。账号接口的响应最多读取 64 KiB，请求及正文读取最多 30 秒，异常不回显凭据。
 
 插件级 JSON 可配置 `retryAfterSeconds`（缺省 10 秒）和 `site`；账号已有 metadata 中的 `retryAfterSeconds` 可覆盖。上游等待提示优先，不新增重试。
 
@@ -139,8 +139,8 @@ Magpie 可能保留带历史读取时间的上次余额；那不是本次查询�
 npm test
 npm run test:policy
 npm run test:headers
-node --check index.mjs
-node --check account.mjs
+node --check src/index.mjs
+node --check src/account.mjs
 npm pack --dry-run
 ```
 
