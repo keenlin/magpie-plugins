@@ -101,6 +101,28 @@ magpie plugin login modelscope-ai
 supported" 的条目）标成 `deprecated`，magpie 会把它们从选择器和路由组里滤掉。
 国内站没有逐个实测，不设黑名单。
 
+### 推理强度
+
+`/v1/models` 只给 id，给不了「是不是思考模型」「支持哪几档推理强度」。不补这张
+表，实时目录一拉到，兜底里的 `reasoning: true` 会全丢（线上 38 个模型都变成非
+思考模型），选择器里也没有强度可选。所以 `src/capabilities.mjs` 按系列补：
+
+| 系列 | 依据 | 思考 | 强度档位 |
+| --- | --- | --- | --- |
+| `nex-agi/Nex-N2.5-*` | 模型卡 | ✅ | none / medium / high |
+| `Qwen/Qwen3.8-Flash-Next` | 模型卡（默认 xhigh） | ✅ | low / medium / xhigh |
+| `Qwen/Qwen3.5-*` | 模型卡（默认思考，开关型） | ✅ | — |
+| `Qwen/Qwen3.8-27B` | 同代 | ✅ | — |
+| `deepseek-ai/DeepSeek-V4*` | 思考模型（输出 reasoning_content） | ✅ | — |
+| `ZhipuAI/GLM-4.5 / 4.6 / 4.7 / 5.2` | models.dev 目录 | ✅ | — |
+
+档位用 OpenCode 的写法 `{ <档位>: { reasoningEffort: <档位> } }`，由
+`@ai-sdk/openai-compatible` 发成请求体的 `reasoning_effort`。
+
+没有文档依据的 id 一律不猜：`variants` 留空、`reasoning` 不硬写 true。一个填了
+档位但上游不认的变体，会让用户选「high」而实际仍是默认档——比没有更糟。国内站
+38 个模型里，15 个标了思考，其中 2 个有档位。
+
 ### 用量卡
 
 两个锚点各按自己的时钟刷新，两次读之间用插件亲眼看见的调用做估算：
@@ -178,10 +200,10 @@ cd D:\magpie-plugin\magpie-modelscope-hub
 node --test
 ```
 
-15 个用例：13 个单元（北京时间换算、账单汇总与额度分桶、用量卡三种形态、模型
-条目形态与 deprecated 判定、两个 provider 的钩子形状）+ 2 个端到端（起一个
-本地假站点，跑通「签到 → 到账 → 用量卡 → 模型列表」和「401 标记过期」两条
-链路，不联外网、不碰真令牌）。
+17 个用例：15 个单元（北京时间换算、账单汇总与额度分桶、用量卡三种形态、模型
+条目形态与 deprecated 判定、推理强度覆盖、两个 provider 的钩子形状）+ 2 个端到端
+（起一个本地假站点，跑通「签到 → 到账 → 用量卡 → 模型列表」和「401 标记过期」
+两条链路，不联外网、不碰真令牌）。
 
 ## 从上游插件切换过来
 

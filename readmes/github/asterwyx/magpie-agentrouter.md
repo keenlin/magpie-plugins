@@ -106,28 +106,19 @@ Magpie 可能保留带历史读取时间的上次余额；那不是本次查询�
 此次重构认证和账号读取，没有移除模型调用兼容功能：
 
 - 模型按该模型目录中的 SDK/端点信息使用 Responses、Anthropic Messages 或 OpenAI-compatible API；Magpie 负责为客户端转换请求。
-- 默认发送兼容的 Codex 客户端请求头。
-- 默认无损内联完整 Responses 历史，保留工具关联和不透明状态。
-- 默认关闭的 `codex-session-repair` 有损资源清理。
+- 始终发送与 Magpie Codex CLI 预设一致的 `User-Agent`、`originator` 和 `version`；不能关闭，也不能用自定义同名头覆盖。
+- 不再重写 Responses 历史；请求正文按客户端发送的内容转发。资源 ID 不兼容时返回明确错误，由客户端重发完整历史或固定到创建该条目的资源。
 - 429 等待提示、内容拒绝和空响应诊断，不自动重试模型请求。
 
-提供商的三个布尔开关仍独立工作：
-
-| 选项 | 默认 |
-|---|---|
-| `send-codex-headers` | 开启 |
-| `portable-responses` | 开启 |
-| `codex-session-repair` | 关闭；开启可能丢失上下文 |
-
-请求检查仍有 4 MiB / 2 秒边界，JSON 响应诊断保持 64 KiB / 2 秒边界。账号接口的响应最多读取 64 KiB，请求及正文读取最多 30 秒，异常不回显凭据。
+提供商不提供布尔选项；插件不会改写请求正文。JSON 响应诊断保持 64 KiB / 2 秒边界。账号接口的响应最多读取 64 KiB，请求及正文读取最多 30 秒，异常不回显凭据。
 
 插件级 JSON 可配置 `retryAfterSeconds`（缺省 10 秒）和 `site`；账号已有 metadata 中的 `retryAfterSeconds` 可覆盖。上游等待提示优先，不新增重试。
 
-既有 `endpoint` / `apiBase` / `headers` 元数据继续生效。认证头、Cookie 和用户 ID 不从自定义头跨用途转发；账号密码与系统令牌只允许发往两个 AgentRouter 站点。
+既有 `endpoint` / `apiBase` / `headers` 元数据继续生效，但 `User-Agent`、`originator`、`version` 和 `Accept` 始终使用 Codex CLI 预设，自定义同名头会被忽略。认证头、Cookie 和用户 ID 不从自定义头跨用途转发；账号密码与系统令牌只允许发往两个 AgentRouter 站点。
 
 ## 升级边界
 
-本版本不迁移旧登录配置。旧账号需要重新使用四项字段登录；既有模型端点、请求头等模型兼容设置继续保留。
+本版本不迁移旧登录配置。旧账号需要重新使用四项字段登录；既有模型端点、请求头等模型兼容设置继续保留。0.5.0 移除了 `portable-responses`、`codex-session-repair` 和请求正文改写；旧设置会被忽略，插件不再修改请求正文。
 
 模型调用测试、系统令牌验证与签到确认是不同的验证，不要把“插件 on”或“账号已保存”视为真实模型回答成功。
 
@@ -136,7 +127,6 @@ Magpie 可能保留带历史读取时间的上次余额；那不是本次查询�
 ```bash
 npm test
 npm run test:policy
-npm run test:headers
 node --check src/index.mjs
 node --check src/account.mjs
 npm pack --dry-run
