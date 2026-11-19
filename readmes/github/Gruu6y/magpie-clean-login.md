@@ -14,6 +14,8 @@
 
 > **这是非官方插件。** 由 [Gruu6y](https://github.com/Gruu6y/magpie-clean-login) 开发维护，**不是** magpie 官方或 `magpie-community` 发布的。代码全部公开，欢迎读、欢迎提 issue、欢迎提 PR。
 
+> **新 · 多平台：** 登录浏览器现在支持 **Windows x64、macOS（Apple Silicon + Intel）和 Linux（x64 / arm64）**——随插件自动下载约 150 MB、经 sha256 校验的精简 Camoufox，一次装好，不用手动装浏览器。
+
 <a id="contents"></a>
 
 ## 目录
@@ -82,7 +84,7 @@
 | 磁盘 | 下载约 153–176 MB（随平台而定），安装时需要约 1 GB 可用空间 —— 只需一次 |
 | 网络 | 只用于你自己发起的动作：代理测速、信任分与身份检测页面、运行时下载，以及供应商自己的登录 |
 
-macOS 说明：Intel Mac 通过 Rosetta 2 运行（`darwin/x64` 资产按进程架构选择，Rosetta 下的 Node 自然命中 x86_64 包）；Intel 版本只做了 Rosetta 冒烟，未在真机验证。其他平台暂时不支持；需要的话请提到 [issue tracker](https://github.com/Gruu6y/magpie-clean-login/issues)。
+macOS 说明：**Apple Silicon（M 系列）已完整验证**——在真实 arm64 环境做过端到端测试（下载、启动、窗口可见、字体与渲染），用的就是 `darwin/arm64` 包，日常使用推荐它。**Intel Mac** 走 `darwin/x64` 包（按进程架构选择，Rosetta 2 下的 Node 自然命中 x86_64），但 Intel 侧只做了 Rosetta 冒烟，未在真机 Intel 上验证，属于尽力支持。其他平台暂时不支持；需要的话请提到 [issue tracker](https://github.com/Gruu6y/magpie-clean-login/issues)。
 
 macOS 的精简包是在官方 zip 里删掉 `Camoufox.app/Contents/Resources/fonts/` 的字体系（约 2.1 GB）只留原生字体，这是一次对“不改官方包”原则的明确破例：上游 macOS 包本身没有代码签名，插件侧也不再做 notarize，Gatekeeper 对未隔离文件不拦启动。构建脚本在 `scripts/build-slim-artifact.mjs`，产物清单见 release 的 `inventory.json`。
 
