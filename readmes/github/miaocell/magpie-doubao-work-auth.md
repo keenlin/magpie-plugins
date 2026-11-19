@@ -13,10 +13,9 @@
 
 > 完整记录见 [CHANGELOG.md](CHANGELOG.md)，最新的在最上面。
 
+- **支持 Linux**（`0.4.0`）。Linux 上可用「粘贴 Cookie」登录，对话 / 流式 / 工具调用 / 额度 / 签到都正常；浏览器登录和客户端读取在 Linux 上不显示。保管库也改成本地 key + AES-GCM，非 Windows 平台不再明文落盘。
+- **模型菜单按账号类型走**（`0.3.5`）。有订阅的账号能出到 12 个模型（多出 Qwen 4 Max、Qwen 3.8 Max、Qwen 3.8 Flash），飞书登录的账号仍是 9 个——菜单来自网页 SSR，和基线取并集，只增不减。倍率解析也放宽了，文案格式变了不至于丢。
 - **工具回复容错**（`0.3.3`/`0.3.4`）。模型中途停下、工具 JSON 没闭合时，先救回写完的调用，救不回来就把正文当普通回复返回，不再整轮报 502；JSON 包在 Markdown 围栏里或前后带解释也能解析。
-- **风控不再反复重试**（`0.3.2`）。被拦后带 `X-Magpie-Refused` 让 magpie 只失败一次，并进入 5 分钟冷却，不再连打 5 次把风控堆高。
-- **支持 Codex 的 Responses 协议**（`029a866`）。之前 Codex 调用会失败，报 `server_error` 或 `delegated input protocol violation`——插件只认 chat completions 的 `messages`，而 Codex 发的是 `input`。同时补上了 `usage` 字段，客户端不再显示 0 token。
-- **倍率改用原生 `rate` 字段**（`4f3c3f1`）。显示成标准徽章，不再拼进模型名。
 
 ## 拿到的模型
 
@@ -65,7 +64,11 @@ magpie quota
 | 从本机浏览器读取 | 不需要 | 读 Chrome / Edge 里已登录的豆包 |
 | 从客户端读 | 需要 | 装了豆包工作才有的选项 |
 
-**导入后与客户端解耦。** 登录那一刻就把 Cookie 存进插件自己的保管库（Windows 用 DPAPI 加密，磁盘上不是明文）。此后客户端退出登录、切号、甚至卸载，已导入的账号照常工作。只有 Cookie 在服务端过期（通常几个月）才需要重新登录。
+**Linux 上只有「粘贴 Cookie」。** 浏览器登录和客户端读取要按 Chrome / 豆包工作的安装路径去找数据，那些路径只覆盖 Windows 和 macOS，Linux 上走不通，所以登录菜单里直接不显示这两项。其余功能（对话、流式、工具调用、额度、签到）不依赖平台。
+
+**导入后与客户端解耦。** 登录那一刻就把 Cookie 存进插件自己的保管库（Windows 用 DPAPI，其他平台用本地 key + AES-256-GCM，磁盘上都不是明文）。此后客户端退出登录、切号、甚至卸载，已导入的账号照常工作。只有 Cookie 在服务端过期（通常几个月）才需要重新登录。
+
+非 Windows 的 key 单独存在同一目录下的 `vault.key`（权限 600）。它能挡住同机其他用户和误拷贝，但挡不住同一用户下运行的恶意程序——Windows 的 DPAPI 也一样，别指望它更强。
 
 **多账号。** 每次登录就是一个独立账号，凭据各自加密、互不干扰。magpie 里可以设故障切换或轮询，`magpie quota` 分别显示每个账号的积分。
 
@@ -123,7 +126,9 @@ magpie quota
 
 ## 一些实现细节
 
-**模型菜单没有前端接口。** 那份数据由网页 SSR 的 loader 在服务端取好内联进页面。前端调 `/alice/slot/action_bar_v3/brief_list` 只返回 `entry_list`（底部工具条：PPT 生成、录音这些 `coco_instruction`），`/alice/bot/action_bar_v3/brief_list` 直接 404。所以插件内置一份实测基线，登录后仍会尝试在线刷新，刷不到就用基线。
+**模型菜单没有前端接口。** 那份数据由网页 SSR 的 loader 在服务端取好内联进页面。前端调 `/alice/slot/action_bar_v3/brief_list` 只返回 `entry_list`（底部工具条：PPT 生成、录音这些 `coco_instruction`），`/alice/bot/action_bar_v3/brief_list` 直接 404。`get_item_conf`、`input/list`、`launch.model_list` 都试过，都不是模型菜单。
+
+所以现在的做法是拿 `/chat` 页面的 HTML 解析 `modeSelectData`。**难点在于这份数据按账号类型给**：有订阅的账号菜单里有 Qwen 4 Max / Qwen 3.8 Max / Qwen 3.8 Flash，飞书账号只有自动和 2.1 Lite 两档（飞书没有 office 的 `model_list`）。直接用它替换会让飞书账号的模型从 9 个掉到 2 个，所以插件把它和内置基线取并集，只增不减——订阅账号出 12 个，飞书账号仍是 9 个。
 
 **`aid` 必须是 497858。** 用错成 1044603 会让所有请求落到另一条产品线：拿不到工作版模型菜单，`launch` 里的 `ug_campaign_info.campaign_group_code` 也是空字符串。
 
@@ -135,6 +140,8 @@ magpie quota
 
 风控验证码（`710022004`）返回 403 但保留账号；登录失效（`710012001`）返回 401，magpie 会把账号标成需要重新登录。
 
+Linux 支持是后加的，目前只在「粘贴 Cookie」这条路上验过。浏览器登录和客户端读取在 Linux 上用不了，登录菜单里不显示。
+
 ## 路径
 
 | 文件 | 位置 |
@@ -143,7 +150,7 @@ magpie quota
 | 登录用浏览器配置 | `%LOCALAPPDATA%\magpie-doubao-work-auth\browser-profile\` |
 | 临时会话清理记录 | `%LOCALAPPDATA%\magpie-doubao-work-auth\conversations\` |
 
-可用 `DOUBAO_WORK_VAULT` 覆盖保管库位置。每个账号一个 `.bin`，内容经 DPAPI 加密。
+可用 `DOUBAO_WORK_VAULT` 覆盖保管库位置。每个账号一个 `.bin`，Windows 上是 DPAPI 密文，其他平台是 AES-256-GCM 密文（key 在 `vault.key`）。
 
 ## 文件
 
@@ -162,7 +169,7 @@ magpie quota
 | `lib/cookie-import.mjs` | Cookie 解析、浏览器库扫描 |
 | `lib/cdp.mjs` | 调试端口读 Cookie、启动登录窗口 |
 | `lib/sqlite.mjs` | 自写的 SQLite 页面读取器 |
-| `lib/vault.mjs` | 账号保管库（DPAPI 加密） |
+| `lib/vault.mjs` | 账号保管库（DPAPI / AES-GCM） |
 | `lib/errors.mjs` | 错误码映射 |
 
 ## 测试
