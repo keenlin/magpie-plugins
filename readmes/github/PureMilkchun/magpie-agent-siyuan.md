@@ -30,7 +30,7 @@ macOS 终端
 magpie plugin add "$PWD"
 ```
 
-已有连接会在原工作区打开时自动补上图标。
+保持 Magpie 运行，打开原工作区后会自动检查图标。如果云同步覆盖了本机的图标片段，插件会补回它，并保留其他设备的图标片段。
 
 1. 打开思源桌面版和要接入的工作区。
 2. 在 Magpie 的 **Agents → 思源笔记 · SiYuan** 选择支持工具调用的模型或路由组。
@@ -64,6 +64,6 @@ node bridge.mjs restore
 
 上游参考 [Magpie Agent 插件文档](https://usemagpie.ai/docs/plugins#agent-plugins)、[思源设置读取源码](https://github.com/siyuan-note/siyuan/blob/v3.8.11/kernel/api/setting_read.go)、[设置补丁源码](https://github.com/siyuan-note/siyuan/blob/v3.8.11/kernel/api/setting_patch.go)、[CSS 片段接口](https://github.com/siyuan-note/siyuan/blob/v3.8.11/kernel/api/snippet.go)和[智能体模型选择及流式调用源码](https://github.com/siyuan-note/siyuan/blob/v3.8.11/kernel/api/agent.go)。
 
-运行 `npm test` 验证连接字段、图标、旧连接升级，以及配置了环境代理时的本机断开恢复。
+运行 `npm test` 验证连接字段、图标、跨设备同步后的图标恢复，以及配置了环境代理时的本机断开恢复。
 
 思源笔记与 Magpie 标志分别归各自项目所有，在此用于标识所集成的应用。 [思源笔记](https://b3log.org/siyuan) · [Magpie](https://usemagpie.ai)
