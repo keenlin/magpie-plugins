@@ -77,6 +77,43 @@ OfficeAce / CodeArts（华为云 AgentArts / MaaS / 码道）接进 magpie。非
 
 ---
 
+## 缓存（T-42 最终口径：**只有 `provider.models` 做缓存**）
+
+用户原话：「所有的东西都需要缓存。更新缓存是我们来控制的，不要自动更新缓存」
+「重启项目的时候，我不希望它就会自动去发送什么请求」。
+
+但同样明确：「那个 usage 这些也不要改」「那个续期的没有问题，不要改」。
+所以最终只有一件事缓存化 —— 模型目录：
+
+| 钩子 | 现在的行为 |
+|---|---|
+| `provider.models` | **只读缓存**：命中 = 0 次请求；未命中 = 目录 1 次 + 倍率 1 次（**网关级**，N 个账号并发也只 1 份），成功才写缓存；失败回落静态表且不写缓存 |
+| `auth.usage` | **每次真实读 `/v1/subscription`**（不缓存） |
+| `auth.refresh` | `refreshLead: 10 分钟` 不变；插件内部按**会话总有效期的 50%** 把关：没过半 ⇒ 返回 `undefined`、零请求 |
+| `trialbit`（自动领体验版） | 默认**开**（不变；打开后每个账号进程内只试一次） |
+
+缓存文件在 magpie 配置目录（`input.directory`，即 `plugin-auth.json` 旁边）：
+
+```text
+officeace-models-cache.json   { [baseUrl|accountKey]: { at, list } }
+```
+
+（`officeace-usage-cache.json` 仍会在登录/重新登录时顺手写一份快照，那是**副产品**，
+`auth.usage` 不读它。）
+
+### `expires` 写的是**会话期限**（T-41 修正）
+
+`plugin-auth.json` 里的 `expires` 曾错写成华为云 **STS** 的期限（~1 小时），会话 JWT 其实还有 ~27 天
+⇒ magpie 每轮都判「该续期」，日志里成片「续期失败」。现在写 `jwt.exp × 1000`（会话期限），
+解不出 JWT 才退回 STS 的 `expiresAt`。
+
+### 续期 = 总有效期的 50%
+
+会话 JWT 自带 `iat` / `exp`，算得出「一半」：**剩余 ≤ 总长 × 0.5 才续**，否则零请求。
+算不出（没有 JWT）才按固定窗口兜底。`refreshLead` 那 10 分钟只是让 magpie「临期来问」，
+真正的闸门在插件内部。
+---
+
 ## 签到
 
 magpie 每天调一次 `POST /v1/subscription/bonus/claim`，领当日签到积分。
