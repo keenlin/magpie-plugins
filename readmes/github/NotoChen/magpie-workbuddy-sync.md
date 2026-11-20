@@ -118,6 +118,7 @@ Magpie 的检索逻辑在 `internal/plugin/github.go`：用 GitHub Search 查 `t
 - 页面里的“角色”可以直接切换 `自动 / 主机 / 从机`，应用后写入本机 `workbuddy-sync.json`，不会改变其他机器；
 - “立即同步”会重载插件并马上执行一次发布/拉取；
 - 状态区显示账号数、generation、最后发布/拉取时间和错误信息。
+- Magpie 可能同时启动多个插件宿主（窗口、页面、CLI）；只有拿到 `workbuddy-sync.lock` 的宿主会写状态，其他宿主静默重试，不会把 “another process” 覆盖到页面。
 
 ## 配置
 
