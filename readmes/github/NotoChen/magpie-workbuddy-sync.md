@@ -20,7 +20,7 @@ WorkBuddy 的 refresh token 被消费后会换新；两台机器各持一份 ref
 - **从机（slave）**：只接收 access token，不接收 refresh token，也不会向 WorkBuddy 发起刷新；
 - 主从判断直接复用 Magpie 的 `sync.json`：
   - `followServer: true` → 从机；
-  - 其余 → 主机。
+  - `followServer: false` → **未设置**，不会自动成为主机；在页面里明确选择主机或从机后才开始同步。
 
 ## 安装
 
@@ -50,7 +50,7 @@ Magpie 的检索逻辑在 `internal/plugin/github.go`：用 GitHub Search 查 `t
 
 1. 安装官方 WorkBuddy 插件，并正常登录 WorkBuddy / WorkBuddy AI；
 2. 已经在 Magpie 设置中启用 GitHub 同步（`sync.json` 存在，且地址是 `github://owner/repo`）；
-3. 主机把 `sync.json` 的 `followServer` 保持关闭；从机打开“跟随服务器”。
+3. 主机的 `sync.json` 保持 `followServer` 关闭，并在页面选择“主机”（或写 `workbuddy-sync.json` 的 `role: "master"`）；从机打开“跟随服务器”。
 
 本插件不需要额外的 GitHub token，也不需要额外的加密口令：它直接复用 `sync.json` 的：
 
@@ -112,10 +112,11 @@ Magpie 的检索逻辑在 `internal/plugin/github.go`：用 GitHub Search 查 `t
 
 ## 页面
 
-插件在 Magpie 侧栏提供「WorkBuddy Sync」页面：
+插件在 Magpie 侧栏提供「WorkBuddy Sync」页面（字体、颜色、按钮都跟随 Magpie 的 `--magpie-*` 主题 token）：
 
 - 每 20 秒自动刷新状态，不需要手动点“重新读取”；
-- 页面里的“角色”可以直接切换 `自动 / 主机 / 从机`，应用后写入本机 `workbuddy-sync.json`，不会改变其他机器；
+- 页面里的“角色”可以直接切换 `自动 / 主机 / 从机`，应用后写入本机 `workbuddy-sync.json`，只影响这台电脑；
+- 非跟随机器默认是“未设置”，避免第二台双向同步的机器自动变成另一个主机；
 - “立即同步”会重载插件并马上执行一次发布/拉取；
 - 状态区显示账号数、generation、最后发布/拉取时间和错误信息。
 - Magpie 可能同时启动多个插件宿主（窗口、页面、CLI）；只有拿到 `workbuddy-sync.lock` 的宿主会写状态，其他宿主静默重试，不会把 “another process” 覆盖到页面。
@@ -135,15 +136,16 @@ Magpie 的检索逻辑在 `internal/plugin/github.go`：用 GitHub Search 查 `t
 
 | 字段 | 说明 |
 | --- | --- |
-| `role` | `master` / `slave`；省略时按 `sync.json.followServer` 自动判断 |
+| `role` | `master` / `slave`；省略时只有 `followServer: true` 的机器自动作为从机，其余机器保持“未设置” |
 | `pollSeconds` | 拉取/检查间隔，10–3600 秒；默认从机 30、主机 15 |
 | `path` | 覆盖快照文件路径；默认 `<prefix>/workbuddy/workbuddy-auth.magpie-data` |
 | `branch` | 覆盖分支 |
 | `token` | 覆盖 GitHub token |
 | `passphrase` | 覆盖加密口令（主机和从机必须一致） |
 | `allowEmpty` | 主机没有 WorkBuddy 账号时也发布空快照；默认 `false` |
+| `allowMasterChange` | 明确允许本机替换 GitHub 上已有的主机快照；默认 `false`，用于接管旧主机 |
 
-`workbuddy-sync.json` 是本机文件，不会进入 Magpie 的同步。整个同步链路只应有一台 `master`；多台主机同时发布会产生 generation 竞争，请只在主机上设 `master`。
+`workbuddy-sync.json` 是本机文件，不会进入 Magpie 的同步。整个同步链路只应有一台 `master`；如果 GitHub 上已经有另一台 master 的快照，本机会拒绝发布并在页面提示。要接管旧主机，先确认旧主机停止同步，再设置 `allowMasterChange: true`。
 
 ## 安全
 
