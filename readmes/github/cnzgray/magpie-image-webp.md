@@ -17,13 +17,16 @@ Magpie 网关 hook：把请求里的内联图片转成 WebP 并按宽度降采�
 
 ## 行为
 
-- 只改 `data:image/...;base64,...` 形式的图片，覆盖 chat 和 responses 两种协议的请求体。
+- 覆盖 chat 与 responses 的 `data:image/...;base64,...`，以及 Anthropic 的 `source.data`（同时改写 `media_type`）和 Gemini 的 `inlineData.data` / `inline_data.data`（同时改写 `mimeType` / `mime_type`，保留原有命名风格）。
+- Anthropic 的 `url` 来源与 Gemini 的 `fileData` 是非内联引用，原样保留。
 - 已压缩更大时保留原图；单张小于 `min` 字节的图不处理。
 - 只处理 `agents` 列出的 agent；`agents: []` 表示全部。
 - 任何异常、编码器缺失、超时都 fail-open：请求原样转发。
 - 改完的图片统一在全部压缩结束后写回请求体，不会留下半改状态。
+- 压缩结果按「输入 sha256 前 16 位 + width + quality」进 LRU；命中后只做 base64 编码。容量按压缩后的字节数计，超出 `cacheMB` 或条数上限即淘汰最久未用的条目。
+- 内置 WASM 后端解码 PNG 与 JPEG；其他格式原样跳过。sharp 与 cwebp 路径同样支持这两种格式。
 
-当前不支持 Anthropic 的 `source.data` 与 Gemini 的 `inlineData.data`（它们的 base64 不是 data URL，替换时还要改 `media_type` / `mimeType`）。这两条路径尚未对上游做 WebP 兼容性验证，见路线图。
+Anthropic 与 Gemini 原生路径对 WebP 的接受度尚未实测，见路线图；在此之前建议先只对已确认的 provider 打开。
 
 ## 安装
 
@@ -38,6 +41,7 @@ Magpie 网关 hook：把请求里的内联图片转成 WebP 并按宽度降采�
     "quality": 85,
     "max": 4,
     "min": 131072,
+    "cacheMB": 64,
     "gatewayTimeoutMs": 5000
   }
 }
@@ -54,7 +58,14 @@ Magpie 网关 hook：把请求里的内联图片转成 WebP 并按宽度降采�
 | `quality` | `85` | WebP 质量，1–100 |
 | `max` | `4` | 每请求最多处理几张图 |
 | `min` | `131072` | 原图小于该字节数时跳过 |
+| `cacheMB` | `64` | 压缩结果 LRU 的字节上限（MB）；`0` 关闭 |
 | `gatewayTimeoutMs` | `5000` | 本 hook 的执行预算，magpie 侧限制在 100–30000 ms |
+
+## 界面
+
+插件在 Plugins 分组里带一个「图片压缩」页，字段与上表一一对应：agent 列表、最大宽度、质量、每轮张数、最小体积、缓存上限和执行预算。保存后写回同一份 options，下一次请求生效（需要 Magpie 0.1.1531 或更新）；页面只通过 `magpie.options.get/set` 读写自己这一份配置。
+
+页面不声明任何读取权限，也不发网络请求；`test/page.test.mjs` 会检查脚本没有网络调用、没有未声明的 `magpie.read`，并校验页面里的默认值与 `lib/options.mjs` 一致。
 
 ## 编码后端
 
@@ -62,13 +73,14 @@ Magpie 网关 hook：把请求里的内联图片转成 WebP 并按宽度降采�
 
 1. **sharp**：同目录装有 `sharp` 时使用，跨平台，自带 EXIF 旋转与宽度探测。
 2. **cwebp**：PATH 里的 `cwebp`，或环境变量 `IMAGE_WEBP_CWEBP` 指定的路径。宽度由内置的 PNG/JPEG 头解析得出；未知格式不带 `-resize`，仍尝试转码。
-3. 都没有：打印一条警告并跳过，请求原样转发。
+3. **wasm**：随包安装的 `@jsquash/png` + `@jsquash/jpeg` + `@jsquash/resize` + `@jsquash/webp`，零系统依赖；解码 PNG 与 JPEG，宽度已达标时跳过 resize，每张压缩后执行 `Bun.gc(true)`。
+4. 依赖缺失：打印一条警告并跳过，请求原样转发。
 
-默认零依赖。要用 sharp 时在 hooks 文件同目录执行 `bun add sharp`。
+`IMAGE_WEBP_BACKEND=sharp|cwebp|wasm` 可以跳过探测强制指定；不设置时自动探测。要用 sharp 加速，在 hooks 文件同目录执行 `bun add sharp`。
 
 ## WASM 后端实测
 
-2026-11-20 在 Bun 1.4.4 上验证 `@jsquash/png` + `@jsquash/resize` + `@jsquash/webp`（1.5.0 / 3.1.1 / 2.1.1），尚未接入 `lib/backends.mjs`。单张图片，q85，Apple Silicon：
+已接入 `lib/backends.mjs`（仅 PNG）。2026-11-20 在 Bun 1.4.4 上验证 `@jsquash/png` + `@jsquash/resize` + `@jsquash/webp`（1.5.0 / 3.1.1 / 2.1.1），单张图片，q85，Apple Silicon：
 
 | 样本 | WASM 冷 / 热 | sharp | cwebp | 输出 | WASM 峰值 RSS |
 |---|---|---|---|---|---|
@@ -78,10 +90,11 @@ Magpie 网关 hook：把请求里的内联图片转成 WebP 并按宽度降采�
 - 冷启动的 wasm 实例化包含在首张耗时内，没有额外初始化开销。
 - 4 张 2560 图一轮耗时 1.84 s，在 5 s 预算内，但只剩约 3 s 余量。
 - 编码体积比 native 大约 5%（噪声样本）；截图样张两者一致。
+- JPEG 1600×1000 照片型样本：解码 + 编码 298 ms，2.6 MB → 1.2 MB，峰值 RSS 177 MB。
 - 宽度已达标时调用 resize 仍需 117–125 ms，后端必须跳过同宽 resize。
 - 不加干预时 RSS 每张上涨约 40 MB（2560）或 10 MB（1600）；每轮调用 `Bun.gc(true)` 后稳定在 296 MB / 118 MB，单次 GC 约 18 ms，相对 450 ms 的压缩成本可忽略。
 
-结论：WASM 可以作为默认后端，但需要配合 GC 与 resize 跳过；sharp 仍是快 1.7 倍、省 2.8 倍内存的可选加速。
+结论：WASM 是默认后端（零系统依赖），已带 GC 与 resize 跳过；sharp 仍是快 1.7 倍、省 2.8 倍内存的可选加速。
 
 ## 开发
 
@@ -89,14 +102,11 @@ Magpie 网关 hook：把请求里的内联图片转成 WebP 并按宽度降采�
 bun test
 ```
 
-测试用确定性噪声生成 PNG，并像网关一样直接调用 `onRequest`。压缩相关用例在缺少 `cwebp` 与 `sharp` 的机器上跳过。
+测试用确定性噪声生成 PNG，并像网关一样直接调用 `onRequest`；`cases.json` 按协议列出结构用例（由 `test/cases.test.mjs` 驱动），`test/wasm.test.mjs` 会在独立进程里强制 WASM 后端跑一遍冷启动路径。
 
 ## 路线图
 
-- [ ] `lib/protocols.mjs` 增加 Anthropic / Gemini 图片字段，先补 `cases.json` 再实现
 - [ ] 上游 WebP 兼容矩阵：yescode、Gemini、Anthropic 原生路径各测一次，必要时按 provider 回退 JPEG
-- [ ] 按 sha256 前缀的 LRU 缓存，避免历史图每轮重压
-- [ ] 图形化 options 表单（page 插件）
 - [ ] 发布 npm，并提 PR 到 `magpie-community/plugins`（命名为 `@magpie-community/gateway-image-webp`）
 
 ## 许可

@@ -1,92 +1,156 @@
 # magpie-jev-context
 
-A magpie decision-provider plugin that wraps Jev and adds context to every
-System One request: the current time, static JSON data, and the output of
-trusted local scripts. It is meant for magpie routing groups that use Jev as
-their classifier, including `effort=auto`.
+A magpie decision-provider plugin that wraps Jev and replaces its System One
+prompt with a prompt template of your own. One provider can expose several
+model suffixes, each with its own prompt, JavaScript scripts, data, and
+timezone.
 
-The plugin is a provider plugin, not gateway middleware. magpie's own
-classifier requests bypass `onRequest` middleware, but they do go through a
-plugin provider's `/systemone` fetch. That is the supported place to add
-context without patching magpie.
+```text
+jev-context/jev-latest
+jev-context/jev-latest:repo
+jev-context/jev-latest:release
+```
 
-## What it adds
+The suffix is the profile. The request's model selects the profile, the
+profile's scripts run, its prompt template is rendered, and the result goes to
+the built-in Jev model you picked.
 
-The plugin leaves magpie's prompt alone except for one extra state field and
-one sentence appended to each question's `instructions`:
+## Install
+
+```sh
+magpie plugin add github:4fuu/magpie-jev-context
+magpie plugin login jev-context
+```
+
+Sign in with a TypeSafe API key. Then use a profile as a routing group's
+classifier:
+
+```sh
+magpie group set <group> classifier=jev-context/jev-latest:repo effort=auto
+```
+
+`effort=auto` is optional. Without it, the plugin still handles intent
+classification.
+
+## Editor
+
+Open `Plugins` → `Jev Context`, or right-click the Jev Context provider and
+choose **Edit Jev context**.
+
+The page is two levels. The editor holds the base-model selector
+(`jev-latest` or `jev-preview`), the profile list keyed by suffix, the prompt
+tabs (Default, Intent, Level, Effort) and the named JavaScript scripts.
+**Preview** opens a dialog on top of the editor with a sample message, a Run
+button and the final `state.context` plus the rendered `questions` exactly as
+they will be sent; Close, Escape or clicking the scrim dismisses it.
+
+`data` and `timezone` are not edited in the page; they stay in
+`jev-context.json` (see below) and are still used by templates and scripts.
+
+The page saves into the plugin's own options (`options.config`). Those settings
+override `jev-context.json`; **Use config file** removes the override. Saving
+restarts the plugin host.
+
+magpie does not render `magpie.panels` provider panels in a plugin provider's
+account editor, so this uses a page and a provider-row action rather than a
+panel.
+
+## Profiles
+
+A profile is one model suffix:
 
 ```json
 {
-  "state": {
-    "message": "明天下午三点提醒我",
-    "context": {
-      "current_time": "2026-11-20T08:00:00.000Z",
-      "local_time": "2026-11-20 16:00:00",
-      "timezone": "Asia/Hong_Kong",
-      "utc_offset": "UTC+08:00",
-      "weekday": "Friday",
-      "unix_time": 1763625600,
-      "data": { "project": "demo" },
-      "scripts": { "git": "## main\n M README.md" }
+  "suffix": "repo",
+  "time": true,
+  "timezone": "Asia/Hong_Kong",
+  "prompt": {
+    "intent": "The message is a request to a coding assistant. Judge it with this repository state:\n{{repo}}",
+    "effort": "How much reasoning does the message need? The repository state is:\n{{repo}}"
+  },
+  "scripts": [
+    {
+      "name": "repo",
+      "js": "return await sh('git status --short --branch')"
     }
+  ],
+  "data": {
+    "project": "demo"
   }
 }
 ```
 
-The note tells Jev to use `context` when the message depends on time, dates,
-schedules, or the supplied facts. Without a note, a model may ignore extra
-state fields. The field name is configurable with `contextKey`.
+The empty suffix is the default profile. Suffixes are custom, but magpie's
+reasoning-effort names (`none`, `minimal`, `low`, `medium`, `high`, `xhigh`,
+`max`) are refused because magpie would read them as an effort.
 
-The plugin does not replace magpie's intent, level, or effort questions. It
-only enriches their state and instructions, so magpie's normal answer parsing
-still works.
+`prompt` can be a string (used for every question) or an object:
 
-## Install
+| Key | Used for |
+| --- | --- |
+| `default` | Every question without its own template |
+| `intent` | The intent choice question |
+| `level` | The level choice question |
+| `effort` | The effort score question |
 
-1. Add the plugin from GitHub or its folder:
+An empty or missing template keeps magpie's built-in instructions for that
+question. A non-empty template replaces them.
 
-   ```sh
-   magpie plugin add github:4fuu/magpie-jev-context
-   ```
+## Template placeholders
 
-2. Add the **Jev Context** provider in magpie and sign in with a TypeSafe API
-   key. The key is stored by magpie's normal plugin sign-in, not in this
-   repository.
+```text
+{{message}}
+{{now}}
+{{current_time}}
+{{local_time}}
+{{date}}
+{{timezone}}
+{{utc_offset}}
+{{weekday}}
+{{unix_time}}
+{{data.project}}
+{{scriptName}}
+{{scripts.scriptName}}
+{{question}}
+```
 
-3. In a routing group, use:
+`{{scriptName}}` is the result of that profile's script. `{{question}}` is
+`intent`, `level`, or `effort` in the question being rendered.
 
-   ```sh
-   magpie group set <group> classifier=jev-context/jev-latest effort=auto
-   ```
+The built-in names (`message`, `now`, `data`, `state`, `questions`, `context`,
+`scripts`, `sh`, and the other time names) are reserved; a script cannot take
+one of those names.
 
-   `effort=auto` is optional; without it the plugin still adds context to
-   intent classification.
+## Scripts
 
-4. Send a message. The classifier's `/systemone` request now passes through
-   the plugin. The request archive, if enabled, shows the enriched body.
+Scripts are JavaScript function bodies. They run once for the selected
+profile before the prompt is rendered.
 
-## Provider menu and editor page
+```js
+return await sh("git status --short --branch");
+```
 
-The plugin adds **Jev Context** to magpie's Plugins group and **Edit Jev
-context** to every provider's row menu. The menu opens the editor page and
-tells it which provider was picked; the page is the Jev Context provider's
-editor, so a click from another provider says so instead of editing it.
+The script scope has:
 
-magpie does not show `magpie.panels` provider panels in a plugin provider's
-account editor (the account editor returns before its panel slot), so this
-uses a page and a provider action rather than a panel.
+- `message`, `now`, `timezone`, `local_time`, `date`, `unix_time`, `weekday`;
+- `data`, `state`, `questions`, `context`;
+- `scripts` (results of scripts already run);
+- `sh(command, options)` for a shell command;
+- `fetch`.
 
-The page edits time, timezone, data, scripts, prompt, upstream URL and
-upstream model from magpie itself. It saves its values in the plugin's own
-options (`options.config`). Those values override `jev-context.json`; `data`
-and `scripts` in the page replace the file's own. **Use config file** removes
-the override and goes back to `jev-context.json`.
+A returned object or array is serialized as JSON. `null`/`undefined` become an
+empty string. A failed script appears in `context.script_errors` and does not
+fail the whole classification.
 
-Saving options restarts the plugin host because this is also a provider
-plugin. The page uses an explicit Save button, not autosave. The file remains
-useful for headless setups and for keeping a config under version control.
+Shell commands are still accepted as a legacy form:
 
-## Configuration
+```json
+{ "name": "legacy", "command": "git status --short" }
+```
+
+New profiles should use `js`.
+
+## Configuration file
 
 The plugin reads `jev-context.json` from magpie's config folder by default.
 Set `JEV_CONTEXT_CONFIG` to use another path.
@@ -94,143 +158,92 @@ Set `JEV_CONTEXT_CONFIG` to use another path.
 ```json
 {
   "upstream": "https://api.typesafe.ai/v1",
-  "upstreamModel": "jev-latest",
-  "time": true,
+  "baseModel": "jev-latest",
   "timezone": "Asia/Hong_Kong",
-  "data": {
-    "project": "demo"
-  },
-  "scripts": [
+  "profiles": [
     {
-      "name": "git",
-      "command": "git status --short --branch",
-      "timeoutMs": 1000,
-      "maxBytes": 2000
+      "suffix": "",
+      "time": true,
+      "prompt": {
+        "default": "The message is what a user asked a coding assistant. Which kind of request fits it best?"
+      },
+      "scripts": []
+    },
+    {
+      "suffix": "repo",
+      "time": true,
+      "prompt": {
+        "intent": "Judge this request with the repository state:\n{{repo}}"
+      },
+      "scripts": [
+        { "name": "repo", "js": "return await sh('git status --short --branch')" }
+      ]
     }
-  ],
-  "prompt": "Use context.scripts.git when the message depends on the repository.",
-  "controlFile": "jev-context.control.json",
-  "timeoutMs": 7000
+  ]
 }
 ```
 
 | Field | Default | Meaning |
 | --- | --- | --- |
-| `upstream` | `https://api.typesafe.ai/v1` | TypeSafe base URL. `/systemone` is appended. |
-| `upstreamModel` | `jev-latest` | Model sent upstream, whatever model the caller names. |
-| `time` | `true` | Add current time fields. |
-| `timezone` | system zone | IANA zone such as `Asia/Hong_Kong`. |
-| `data` | `{}` | Static JSON merged into `context.data`. |
-| `scripts` | `[]` | Trusted commands whose stdout becomes `context.scripts.<name>`. |
-| `prompt` | `""` | Extra sentence appended to each question's instructions. |
-| `cwd` | magpie config folder | Default working directory for scripts. |
-| `env` | `{}` | Extra environment variables for scripts. |
-| `timeoutMs` | `7000` | Upstream request timeout, and the default script timeout. |
-| `maxOutputBytes` | `4000` | Default script stdout limit. |
-| `controlFile` | `jev-context.control.json` | Per-machine control file next to the config. `false` disables it. |
-| `contextKey` | `context` | State field the context is written to. |
-| `authHeader` | `authorization` | Upstream auth header. |
-| `authScheme` | `Bearer` | Prefix for the API key. Empty sends the key raw. |
-| `headers` | `{}` | Extra upstream headers. |
+| `upstream` | `https://api.typesafe.ai/v1` | TypeSafe base URL; `/systemone` is appended |
+| `baseModel` | `jev-latest` | Jev model sent upstream |
+| `timezone` | system zone | Default IANA zone for profiles |
+| `profiles` | one default | Model-suffix profiles |
+| `cwd` | magpie config folder | Default working directory for scripts |
+| `env` | `{}` | Extra environment variables for scripts |
+| `timeoutMs` | `7000` | Upstream timeout and default script timeout |
+| `maxOutputBytes` | `4000` | Default script output limit |
+| `controlFile` | `jev-context.control.json` | Per-machine overrides; `false` disables |
+| `contextKey` | `context` | State field the context is written to |
 
-`upstream` is read when the plugin host loads the account. Restart magpie after
-changing it. Other fields are read on every request.
+`upstream` is read when the plugin host loads the account. Restart magpie
+after changing it. Profile settings are read on every request.
 
-## Per-call replacement
+## Per-call overrides
 
-A direct `/v1/systemone` caller can put a reserved `jev_context` object in
-`state`:
+A direct `/v1/systemone` caller can add `state.jev_context`:
 
-```sh
-curl -s http://127.0.0.1:3425/v1/systemone \
-  -H 'Authorization: Bearer magpie' \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "model": "jev-context/jev-latest",
-    "state": {
-      "message": "把发布说明写到明天下午的版本里",
-      "jev_context": {
-        "now": "2026-11-21T06:00:00Z",
-        "timezone": "Asia/Shanghai",
-        "data": { "release": "2026.11.21" },
-        "scripts": ["git"],
-        "prompt_append": "The release date is fixed; do not infer it."
-      }
-    },
-    "questions": {
-      "intent": { "type": "choice", "instructions": "Which kind of request is this?" }
-    }
-  }'
+```json
+{
+  "now": "2026-11-21T06:00:00Z",
+  "timezone": "Asia/Shanghai",
+  "data": { "release": "2026.11.21" },
+  "scripts": ["repo"],
+  "prompt": "Replace the selected profile's prompt for this call",
+  "prompt_append": "Appended after that prompt"
+}
 ```
 
-The `jev_context` object is removed before the request goes upstream. Its
-fields:
+Precedence is config, control file, then `state.jev_context`. `replace: true`
+drops the profile's data and scripts for the call.
 
-- `now` or `current_time`: ISO time or Date-parseable string.
-- `timezone`: IANA zone for this call.
-- `time`: `false` to omit time fields.
-- `data`: merged over configured data.
-- `scripts`: names of configured scripts to run; an empty array runs none.
-- `replace`: `true` to ignore configured data and scripts.
-- `prompt`: replace the configured prompt for this call.
-- `prompt_append`: append to the effective prompt.
+## Preview service
 
-Precedence is config, then control file, then the call's `jev_context`.
+The preview dialog first calls a local service on `127.0.0.1:3488` that runs
+the selected profile's scripts with the same code as the plugin, so shell
+(`sh`) scripts show real output. The dialog header reports which path answered
+(`via service-css`, `via service-js` or `via local`).
 
-For a caller's own request body, `request` in the CLI applies the same
-injection without sending anything:
-
-```sh
-jev-context request request.json
-```
-
-## Control file and scripts
-
-The control file is for a local script that wants to change the next
-classifier calls without editing the config:
-
-```sh
-jev-context control '{"data":{"deploy":"staging"},"scripts":["git"]}'
-jev-context control clear
-```
-
-A call's `jev_context` overrides it. Because magpie's internal classifier
-request does not carry caller headers or a session, a script cannot pass a
-private header into that request. Use the control file, a per-call `state`
-field when calling `/v1/systemone` yourself, or a message-keyed lookup inside
-your own wrapper.
-
-Scripts are defined only in the config. A request can select a configured
-script by name, but cannot define a new command. That keeps a `/systemone`
-caller from turning the plugin into arbitrary command execution. Scripts run
-with the plugin host's user permissions, so only configure commands you
-trust. Output is truncated and failures appear in `context.script_errors`
-without failing the whole classification.
-
-Scripts receive:
-
-- `JEV_CONTEXT_MESSAGE`: the request's message.
-- `JEV_CONTEXT_NOW`: the effective time as ISO.
+magpie serves plugin pages in a sandboxed iframe whose CSP blocks network
+fetches. When the service subresource cannot load (for example behind a remote
+portal that re-authenticates subresources), the dialog falls back to running
+pure-JavaScript scripts in the page itself (`via local`); `sh` scripts then
+report that they run only in the plugin host. On a local magpie the service
+path is used and shell scripts preview normally. If the service cannot start
+at all, classification still works.
 
 ## Development
 
 ```sh
-bun install
 bun test
 bun run check
 ```
 
-The tests cover time formatting, data merging, script output, control-file
-precedence, per-call replacement, prompt injection, and the plugin's upstream
-request. They do not call the live TypeSafe API.
-
 ## Limits
 
-- Only requests that select this plugin's model are enriched. A group still
-  pointed at `typesafe/jev-latest` bypasses it.
-- The plugin adds one network hop. Keep scripts fast; the classifier timeout
-  is magpie's, 8 seconds by default.
-- Context is sent to the configured upstream. Do not put secrets in `data` or
-  script output unless that upstream is allowed to see them.
-- `upstream` changes require a host restart because the provider loader's base
-  URL is cached by magpie.
+- Only requests that name one of the plugin's models go through it.
+- A profile's `sh()` script runs on the plugin host with your user
+  permissions. Only configure trusted commands.
+- Data and script output are sent to the configured upstream. Do not put
+  secrets in them unless that upstream may see them.
+- `upstream` changes require a host restart; profile edits do not.
