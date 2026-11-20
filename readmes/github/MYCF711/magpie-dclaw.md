@@ -41,35 +41,29 @@
 
 在 Magpie 的 **插件 → DClaw 龙虾 → 登录** 中选择：
 
-1. **手机号 + 短信验证码**：不需要客户端；插件复刻 1.3.30 的 `/api/auth/send-code` 与 `/api/auth/login`。
-2. **网页登录（隔离浏览器，推荐首次带邀请码）**：插件起一个一次性 Chromium 窗口打开 `https://www.dianclaw.cn/inviteNew?ic=<邀请码>`（无码则 `/login`），你在窗口里正常注册/登录，插件读回 `dclaude.auth.session` 并换 `model_api_key`。窗口用完即关、临时 profile 删除，不碰你日常浏览器。
-3. **粘贴 DClaw 会话令牌**：插件通过 `/api/v1/user/info` 换取 `model_api_key`。
-4. **仅模型 API Key**：直接使用已有 `model_api_key`，不访问 DClaw 站点，模型目录使用随包快照，不显示个人余额。
+1. **网页登录（推荐）**：起一个一次性 Chromium（Chrome / Edge / 国产 Chromium 都行），打开 `https://www.dianclaw.cn/inviteNew?ic=<邀请码>`（无码则 `/login`），你在窗口里完成注册/登录，插件读回 `dclaude.auth.session` 并换 `model_api_key`。窗口用完即关、临时 profile 删除，不碰你日常浏览器。
+2. **粘贴 DClaw 会话令牌**：从客户端 `dclaude.auth.session` 里取出 token 粘进来。
+3. **仅模型 API Key**：直接使用 `model_api_key`，不访问 DClaw 站点，模型目录用随包快照。
+
+> **为什么没有内置「手机号 + 短信验证码」**：DClaw 的邀请码只能在注册 URL 上生效，
+> `/api/auth/login` 的请求体里没有邀请字段。在插件里复刻短信 API 登录，那条路就永远带不了邀请 ——
+> 所以登录只走网页，一条路把邀请一起解决。
 
 模型调用仍消耗 DClaw 账户余额。插件不伪造免费额度，也不把会话令牌当成原生模型 Key。
 
-### 邀请码
+### 邀请码（复刻百智云「首选账号作为邀请源」）
 
-DClaw 的邀请只在**网页注册那一刻**的 URL 上生效（`/inviteNew?ic=<code>`），客户端短信登录没有邀请字段，已注册账号也补不了。所以：
+插件选项 `invite_preferred`：
 
-- 用「网页登录」注册新账号时，插件默认带上**已登录账号记住的邀请码**（登录过一次就会自动记住）；没有记住时会问你一次，填 `0` 表示这次不带；
-- 邀请奖励归链接里的邀请人（被邀请人每次充值，邀请人得 10% Token），与插件本身无关；
-- 缓存文件只写 `~/.cache/magpie/dclaw-invite.json`，不写 Magpie 的配置目录。
+| 开关 | 行为 |
+|---|---|
+| **关闭（默认）** | 不问，**自动用最新注册账号的邀请码**滚动邀请 —— 仍然带码，只是不打扰你 |
+| 开启 | 登录时选「最新账号 / 指定账号 / 手动邀请码」，选择会被记住 |
 
-### 每日签到
-
-Magpie 会在账号那一行画「立即签到」，也可在设置里开启自动签到。插件逻辑：
-
-```text
-GET  /api/v1/user/tencent-signin/status   → eligible / canClaim / claimable / claimCount
-POST /api/v1/user/tencent-signin/claim    → 仅在 canClaim=true 时调用
-```
-
-结果按宿主契约报 `claimed` / `done` / `ineligible` / `inactive` / `failed`：今天已领也报 `claimed`（`credit` 为 0），这样宿主才会盖当天时间戳。签到奖励与次数上限由 DClaw 活动决定（当前接口给出 `maxClaims: 10`）。
-
-> 实测当前账号 `eligible=false`、`reason="非活动用户"`，所以卡片显示「该账号不符合条件」——这是账号资格问题，不是插件没实现。换一个参加活动的账号即可正常领取。
-
-DClaw 1.3.30 没有「每日任务」类接口；客户端里与任务相关的只有提醒红包（`/api/v1/client/reminder/reward/*`，需微信授权后按 `rewardRecordId` 领取）、卸载挽留奖励和邀请统计，都不属于每日任务体系，插件均未接入。
+- 邀请码来自被选中账号自己的 `GET /api/v1/user/invite-new`；每个账号登录成功后也会自动记住自己的码。
+- 手填框始终存在：关闭开关时填了码就用你填的，留空才用最新账号的码。
+- 自邀（邀请源＝本次要登录的账号）、取不到码、码不是纯字母数字，都按「不带码」处理，绝不把账号 ID 拼进 URL。
+- 缓存只写 `~/.cache/magpie/`：`dclaw-preferred.json`（记住的选择）、`dclaw-invite.json`（手填码与账号码）。
 
 ## 安装
 
