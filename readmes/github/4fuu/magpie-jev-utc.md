@@ -43,12 +43,31 @@ routes back into itself.
 
 ## Install
 
+From GitHub (recommended):
+
+```sh
+magpie plugin add github:4fuu/magpie-jev-utc
+```
+
+The full repository URL works too:
+
+```sh
+magpie plugin add https://github.com/4fuu/magpie-jev-utc
+```
+
+For a local checkout (development):
+
 ```sh
 magpie plugin add /path/to/magpie-jev-utc
 ```
 
-Then choose `jev/jev-latest-date-utc` (or the preview one) as the decision
-model of a routing group. Nothing else to configure.
+Installing is the whole setup: the plugin signs itself in with a local
+placeholder, so there is no key to paste and no sign-in step. Then choose
+`jev/jev-latest-date-utc` (or the preview one) as the decision model of a
+routing group. Nothing else to configure.
+
+To update later, run `magpie plugin update`; to remove it,
+`magpie plugin rm magpie-jev-utc`.
 
 ## Development
 
