@@ -110,6 +110,15 @@ Magpie 的检索逻辑在 `internal/plugin/github.go`：用 GitHub Search 查 `t
 - 主机删除一个账号，从机下次拉取时删除；
 - 从机的 WorkBuddy Plus 能看到这些账号，但不要开启它的定时任务（任务只在主机跑）。
 
+## 页面
+
+插件在 Magpie 侧栏提供「WorkBuddy Sync」页面：
+
+- 每 20 秒自动刷新状态，不需要手动点“重新读取”；
+- 页面里的“角色”可以直接切换 `自动 / 主机 / 从机`，应用后写入本机 `workbuddy-sync.json`，不会改变其他机器；
+- “立即同步”会重载插件并马上执行一次发布/拉取；
+- 状态区显示账号数、generation、最后发布/拉取时间和错误信息。
+
 ## 配置
 
 一般情况下不需要配置文件。需要覆盖时，在 Magpie 配置目录（通常是 `~/.config/magpie`）新建 `workbuddy-sync.json`：
