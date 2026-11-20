@@ -1,9 +1,7 @@
 # MuseBridge for Magpie
 
-[![npm 版本](https://img.shields.io/npm/v/muse-bridge-magpie?logo=npm&color=cb3837)](https://www.npmjs.com/package/muse-bridge-magpie)
-[![npm 下载量](https://img.shields.io/npm/dm/muse-bridge-magpie?color=cb3837)](https://www.npmjs.com/package/muse-bridge-magpie)
-[![GitHub 仓库](https://img.shields.io/badge/GitHub-muse--bridge--magpie-181717?logo=github)](https://github.com/DaBinBinah/muse-bridge-magpie)
-[![服务端 MuseBridge](https://img.shields.io/badge/服务端-muse--bridge-2563EB?logo=github)](https://github.com/DaBinBinah/muse-bridge)
+- 服务端主仓库（MuseBridge）：https://github.com/DaBinBinah/muse-bridge
+- npm 包：https://www.npmjs.com/package/muse-bridge-magpie
 
 在 [Magpie](https://usemagpie.ai)（兼容 OpenCode 插件）里通过你自己的
 [MuseBridge](https://github.com/DaBinBinah/muse-bridge) 反代使用 muse.ai：
@@ -80,9 +78,8 @@ magpie provider test musebridge muse-chat
 
 **方式三 · npm（如果已发布）**
 
-[![npm](https://img.shields.io/npm/v/muse-bridge-magpie?logo=npm&color=cb3837)](https://www.npmjs.com/package/muse-bridge-magpie)
-[![GitHub](https://img.shields.io/badge/GitHub-muse--bridge--magpie-181717?logo=github)](https://github.com/DaBinBinah/muse-bridge-magpie)
-（npm 详情页即本 README；GitHub 仓库：https://github.com/DaBinBinah/muse-bridge-magpie ）
+npm 包：https://www.npmjs.com/package/muse-bridge-magpie
+主仓库：https://github.com/DaBinBinah/muse-bridge
 
 ```bash
 magpie plugin add muse-bridge-magpie
