@@ -145,7 +145,19 @@ Magpie 的检索逻辑在 `internal/plugin/github.go`：用 GitHub Search 查 `t
 | `allowEmpty` | 主机没有 WorkBuddy 账号时也发布空快照；默认 `false` |
 | `allowMasterChange` | 明确允许本机替换 GitHub 上已有的主机快照；默认 `false`，用于接管旧主机 |
 
-`workbuddy-sync.json` 是本机文件，不会进入 Magpie 的同步。整个同步链路只应有一台 `master`；如果 GitHub 上已经有另一台 master 的快照，本机会拒绝发布并在页面提示。要接管旧主机，先确认旧主机停止同步，再设置 `allowMasterChange: true`。
+`workbuddy-sync.json` 是本机文件，不会进入 Magpie 的同步。整个同步链路只应有一台 `master`。
+
+### 主机切换
+
+快照里有 `lease`（owner、epoch、expiresAt）：
+
+- 当前主机每次发布/续租都会带着自己的租约；
+- 页面“接管主机”会把本机设为 master，并设置 `allowMasterChange: true`；
+- 接管成功后这个开关会自动清除，避免后续误接管；
+- 接管时 epoch 加一，旧主机下一次发布会读到新的 owner，停止发布并在页面提示；
+- 快照写入使用 GitHub Contents API 的 SHA 条件写：两台主机同时写时只有一台成功，另一台重新读取后看到新租约，停止。
+
+因此正常配置下同一时间只有一个主机在写快照。要做到绝对保证，前提是所有机器都使用本插件、同一个仓库和同一个口令，并且没有手动改 GitHub 文件；如果两台机器都设置 `allowMasterChange: true` 并同时操作，会出现接管竞争，请只在准备接管的新主机上开启它。
 
 ## 安全
 
