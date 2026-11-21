@@ -1,5 +1,7 @@
 # 讯飞 Loomy for magpie
 
+> **改这个插件前先读 [AGENTS.md](./AGENTS.md)** —— 尤其是「不要重启 magpie」那一条。
+
 把 [Loomy（讯飞 Loomy 桌面端）](https://loomy.xunfei.cn) 的模型接进 magpie：**三种登录**、
 实时模型目录、两个积分池，外加一个管理面板（新手任务 / 邀请码 / 批量导入）。
 
