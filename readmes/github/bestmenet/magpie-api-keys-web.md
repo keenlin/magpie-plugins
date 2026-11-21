@@ -20,7 +20,7 @@ Requires Magpie **0.1.3960 or later**, Bun on the server, and a stable `MAGPIE_W
 
 ## Permissions
 
-Setup writes a deploy-specific random capability to this plugin's private Magpie options. The signed-in parent window passes it to the plugin over the official page bridge. The plugin service binds to `127.0.0.1:45185`, requires that credential for reads and writes, and only calls Magpie's gateway-key routes. Treat the plugin options as sensitive configuration. Rerun setup to rotate the capability. Disable or remove this plugin in Magpie to remove its sidebar entry.
+Setup writes a deploy-specific random capability to this plugin's private Magpie options. The signed-in parent window passes it to the plugin over the official page bridge. The plugin service binds to `127.0.0.1:45185`, requires that credential for reads and writes, and only calls Magpie's gateway-key routes. Treat the plugin options as sensitive configuration. Set `MAGPIE_API_KEYS_ROTATE=1` when rerunning setup to rotate the capability. Disable or remove this plugin in Magpie to remove its sidebar entry.
 
 For the native app, use the [Desktop edition](https://github.com/bestmenet/magpie-api-keys-desktop).
 
