@@ -11,13 +11,13 @@ Trace and inspect model requests and responses through the Magpie gateway. Edit 
 With Magpie installed, add the published npm package:
 
 ```sh
-magpie plugin add npm:magpie-page-d-message@1.0.0
+magpie plugin add npm:magpie-page-d-message@1.0.1
 ```
 
 You can also install the same version from GitHub:
 
 ```sh
-magpie plugin add github:DeePunk42/D-mesage#v1.0.0
+magpie plugin add github:DeePunk42/D-message#v1.0.1
 ```
 
 ## Record and replay a request
