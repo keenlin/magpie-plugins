@@ -3,6 +3,8 @@
 把云知声 Token Hub（[maas.unisound.com](https://maas.unisound.com)）的 **U Plan** 接入 [magpie](https://usemagpie.ai) 的供应商插件。面向 U Plan（Token Plan）用户：积分口径计费、双池额度窗口、赠送池视觉模型。
 
 > English README: [README.en.md](./README.en.md)
+>
+> **设计定位**：本插件目前主要为 **U Plan Free 档**用户设计——积分窗口按 Free 档额度（5h 突发池 500 / 周池 2500）显示，已用积分按官方系数精算、与服务端对账一致。Standard / Plus 档位如有真实用户需求，届时再考虑档位配置设计（欢迎提 issue 说明档位与场景）。
 
 ## 功能
 
@@ -47,7 +49,7 @@ magpie plugin login unisound
 ## 已知局限
 
 - **积分余量为本地估算**：从装插件起算，不含之前的消耗；窗口为滚动近似（官方的 5 小时窗口是「首次消耗起算重置」，滚动近似只会偏保守）。已与服务端对账：本地精算与控制台 `已用积分` 逐位一致。精确余量与重置时间以 [控制台用量页](https://maas.unisound.com/admin/subscription) 为准（服务端额度接口只认浏览器会话，不接受 API key）。
-- **双车道不区分档位**：usage 窗口按 Free 档额度显示（Standard / Plus 用户比例仍然正确）。
+- **按 Free 档设计**：积分窗口总量为 Free 档常量；Standard / Plus 档位用户已用积分仍然精确，但进度条比例不对——档位配置设计留待有真实需求再做。
 - **radimed 无积分 cost**：赠送池积分系数未公布，magpie 侧显示为 0 费用（token 统计不受影响）。
 
 ## 数据与隐私
