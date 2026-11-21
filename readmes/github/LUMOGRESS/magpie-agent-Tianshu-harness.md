@@ -1,4 +1,4 @@
-# magpie-agent-tianshu
+# magpie-agent-Tianshu-harness
 
 把 [天枢](https://github.com/huiliyi37/Tianshu-harness)（Tianshu / rivet harness）作为一个 Agent 接进 [magpie](https://usemagpie.ai)：在 magpie 的 **Agents** 页给天枢选一个模型，天枢就通过 magpie 的网关用它全部供应商与路由组。
 
@@ -23,7 +23,7 @@
 magpie plugin add /path/to/this/folder
 
 # 或从 git
-magpie plugin add github:<你的仓库>/magpie-agent-tianshu
+magpie plugin add github:LUMOGRESS/magpie-agent-Tianshu-harness
 ```
 
 装上之后打开 magpie → **Agents**，天枢这一行出现了。在此之前先确认天枢已装：
@@ -113,7 +113,7 @@ magpie 的「发现」页有四个位置能露出插件，门槛依次提高。�
 把仓库推到 GitHub，然后给它打 tag：
 
 ```bash
-gh repo create magpie-agent-tianshu --public --source=. --push
+gh repo create magpie-agent-Tianshu-harness --public --source=. --push
 gh repo edit --add-topic magpie-plugin
 ```
 
@@ -125,7 +125,7 @@ magpie 每十分钟查一次 GitHub，之后插件会出现在 **插件 → 发�
 - `LICENSE` 必须是 GitHub 能识别的标准文本，否则卡片回退到 `package.json` 的 `license`。本包的 LICENSE 保持 MIT 原文，图标版权单独放在 `NOTICE`；
 - fork、已归档的仓库、以及 `magpie-community/` 自己的仓库不会显示。
 
-别人这样装：`magpie plugin add github:<owner>/magpie-agent-tianshu`。
+别人这样装：`magpie plugin add github:LUMOGRESS/magpie-agent-Tianshu-harness`。
 
 ### 2. 发到 npm —— 让「发现」页的搜索找得到
 
@@ -135,7 +135,7 @@ npm publish --access public
 
 搜索规则（文档原文）：`插件里的搜索会向 npm 查询 <关键词> opencode，显示名字或 keywords 里同时含有 opencode 和 auth、plugin、provider 之一的包`。所以 keywords 里必须有 **`opencode`**，并且至少有一个 `auth` / `plugin` / `provider` 词——本包的 `["opencode", "opencode-plugin", …]` 满足这条，缺了就会被搜不到。
 
-发 npm 后别人可以 `magpie plugin add magpie-agent-tianshu`，详情页显示的是 npm 上的这份 README。
+发 npm 后别人可以 `magpie plugin add magpie-agent-tianshu-harness`，详情页显示的是 npm 上的这份 README。
 
 ### 3. 进官方推荐列表 —— 需要 PR
 
@@ -143,7 +143,7 @@ npm publish --access public
 
 ```json
 {
-  "package": "magpie-agent-tianshu",
+  "package": "magpie-agent-tianshu-harness",
   "name": "天枢 Tianshu",
   "icon": "data:image/svg+xml;base64,…",
   "kind": "agent",

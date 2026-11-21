@@ -38,19 +38,78 @@ LiveKit retires models regularly — if one stops answering, check
 | Model in magpie | What it is | Context | Max output | Thinking levels |
 |---|---|---|---|---|
 | `livekit/deepseek-v4.1-flash` | DeepSeek V4.1 Flash | 1,048,576 | 384,000 | low / medium / high |
-| `livekit/deepseek-v4-pro` | DeepSeek V4 Pro | 1,048,576 | 393,216 | low / high / max |
 | `livekit/gpt-6-luna` | GPT-6 Luna | 1,050,000 | 128,000 | minimal / low / medium / high |
 | `livekit/gemini-3.8-flash` | Gemini 3.8 Flash | 1,048,576 | 65,536 | low / medium / high |
 | `livekit/kimi-k2.6` | Kimi K2.6 | 262,144 | 262,144 | low / medium / high |
 | `livekit/grok-4.7` | Grok 4.7 | 524,288 | 131,072 | low / medium / high |
 
-All six support tool calling, which is what coding agents rely on.
+All five support tool calling, which is what coding agents rely on.
 
 Two of them need care, and the plugin already handles both:
 
 - **Kimi K2.6** spends its whole output budget on thinking when the budget is small,
   and then says nothing. The plugin raises any Kimi request below 8,000 tokens to 8,000.
-- **DeepSeek V4 Pro** gets worse with thinking turned off, so no `minimal` level is offered.
+- **DeepSeek V4 Pro was removed.** LiveKit silently served it with Gemma 4 31B, twice in a
+  row on 2026-11-21, so the entry is gone rather than showing a model that is not itself.
+
+## Thinking content
+
+Whether a model's reasoning text comes back depends on the model, not on the plugin:
+
+| Model | Thinking text returned? | Field |
+|---|---|---|
+| `deepseek-v4.1-flash` | **yes** | `reasoning_content` |
+| `kimi-k2.6` | **yes** | `reasoning` + `reasoning_details` |
+| `gpt-6-luna` | no — only `reasoning_tokens` in usage | — |
+| `gemini-3.8-flash` | no — only `reasoning_tokens` in usage | — |
+| `grok-4.7` | no — only `reasoning_tokens` in usage | — |
+
+The gateway passes both fields through, on streaming and non-streaming requests, and magpie
+understands both — so a client that renders thinking will show it for the first three.
+The other three still think (you can see the tokens in usage), they just do not return the text.
+
+## The model can silently become a different model
+
+This one matters. LiveKit falls back to another model when the one you asked for is not
+available, and it does **not** fail the request. The response says so in a header:
+
+```
+X-Livekit-Inference-Llm-Model-Fallback: google/gemma-4-31b-it
+```
+
+Asked for `deepseek-v4-pro` on 2026-11-21 and this is what came back — Gemma 4 31B
+answering in DeepSeek's place. That is why it can feel "not really DeepSeek", and why that
+model was removed from this plugin.
+
+The plugin does two things about it:
+
+- logs a warning to magpie's log: `[livekit] … 实际由 … 服务（LiveKit 自动回退）`
+- keeps the last one for 30 minutes and shows it in `magpie quota livekit` as a
+  **回退提醒** row
+
+If a model falls back often, stop using it. That is exactly what happened to
+`deepseek-v4-pro`, and why it is no longer offered here.
+
+## Remaining credits: what can and cannot be shown
+
+There is no API for the `$2.50` balance. `/v1/models` returns `{}`, and the LiveKit
+Cloud API has no usage or credits resource. The plugin asks anyway, on every quota refresh
+(one `max_completion_tokens: 1` request, about ten tokens):
+
+- **if** LiveKit ever starts sending `X-Livekit-Inference-Credits-Limit` / `-Used`,
+  `magpie quota livekit` shows a real `used / limit` window with a percentage, with no
+  change needed here
+- **today** it shows `LiveKit 不公开余额，控制台查看`, the real rate limits
+  (`RPM` / `TPM`), and the last fallback or quota warning it saw
+
+So: rate limits — yes; remaining credits — only in the console.
+
+## Automatic model discovery
+
+`magpie provider models` asks `/v1/models` first. If it ever lists models, the plugin
+uses that list: models that disappeared are dropped, new ones are added with conservative
+limits (128k context, 32k output) until their real numbers are known. While the listing is
+empty — which is the case today — the static table above is used unchanged.
 
 ## Read this before you use it for real work
 
