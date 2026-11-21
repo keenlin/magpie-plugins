@@ -13,6 +13,7 @@
 | **价格单位** | 未处理 | magpie 按 **每 token** 报价，天枢按 **每百万 token** 记账，已换算 |
 | **未知值** | 0 会照写 | 0 与非整数视为「不知道」，直接不写，让天枢按模型 id 自行推断 |
 | **旧模型** | 无处理 | 标记 `deprecated` |
+| **思考内容** | 未声明 `reasoningSplit`，`reasoning_content` 里的思考被丢弃 | 声明 `reasoningSplit`，实测 3 个上游全部 200 |
 | **检测** | 只看 `bin` | `bin` + `aliases: ["rivet"]`（同名入口的第二个命令），不靠配置目录判断是否安装 |
 | **名称** | `Tianshu` | `天枢 Tianshu`，中文界面下直接显示中文名 |
 
@@ -91,8 +92,8 @@ magpie tianshu default         # 取消接入，把天枢原来的配置还回�
 
 ## 边界
 
-- **不写 MCP**：magpie 能写的 MCP 格式里没有天枢那种（天枢的服务器在 `~/.rivet/config.json` 的 `mcp.servers` 里，形状是自己的），所以这里不声明 `library`，也不猜一个格式去写它。
-- **不写 skills / instructions**：天枢的全局技能目录是 `~/.agents/skills` 与 `~/.rivet/skills`，其中前者已经是 magpie 资源库自己的来源，写进去会让同一个技能被登记两次。
+- **不写 MCP**：magpie 能写的 MCP 格式（`mcpFormat`）是一份固定白名单，天枢不在其中 —— 天枢的服务器在 `~/.rivet/config.json` 的 `mcp.servers` 里，形状是自己的。所以这里不声明 `library`，也不猜一个格式去写它。
+- **不写 skills / instructions**：天枢的运行时只从 `.rivet/skills` 加载技能（源码原话：*the runtime only ever loads from .rivet/skills — external dirs are never loaded*），而 magpie 资源库写的是 `~/.agents/skills` 一类的外部目录。声明 `library.skills` 不会让天枢加载到它们，只会制造一个看起来生效、实际空转的配置。
 - **只碰一个文件**：`~/.rivet/config.json`。天枢其余配置由天枢自己管。
 
 ## 测试
