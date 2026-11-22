@@ -163,9 +163,11 @@ See the file header for options (`PROXY_TOKEN` auth recommended).
   (rotation persisted). No outpost is spawned at request time — the chat
   WebSocket goes straight to the tenant's `ws_host`.
 - **复制登录地址（Copy sign-in link）**: the same browser OAuth flow, but
-  magpie doesn't open a browser — copy the link and paste it into the
-  browser you use to sign in to Amazon. The callback is `127.0.0.1`, so that
-  browser must run on the same machine as magpie.
+  magpie opens nothing — copy the link into the browser you sign in to
+  Amazon with, then paste the address-bar URL into the box magpie shows.
+  On another computer the browser can't reach the `127.0.0.1` callback: the
+  first paste saves the account info and asks you to start again — the
+  second paste finishes the login (saved info valid for 15 minutes).
 - **本地凭据（Local credentials）**: on Windows reads the app's session from
   Credential Manager and chats directly (OIDC auto-refresh, write-back keeps
   the app's tokens valid); elsewhere or on failure it boots the bundled
