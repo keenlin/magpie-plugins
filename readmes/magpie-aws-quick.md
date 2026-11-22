@@ -138,9 +138,12 @@ maps to `thinking_effort`: `off/low/medium/high/max`.
 ### 2. Install the plugin
 
 ```bash
-magpie plugin add <this directory or git URL>
-magpie login aws-quick        # pick a sign-in method when prompted
+magpie plugin add magpie-aws-quick   # from npm; or a local directory / git URL
+magpie login aws-quick              # pick a sign-in method when prompted
 ```
+
+In the magpie app, search "Amazon Quick" under **Plugins** and install it from
+there.
 
 **Alternative: standalone OpenAI-compatible proxy** — `node bin/serve.mjs`
 serves the same adapter on `127.0.0.1:$PORT/v1` (default port 3426) for
@@ -159,6 +162,10 @@ See the file header for options (`PROXY_TOKEN` auth recommended).
   The ~1-hour id_token is auto-refreshed via the stored refresh token
   (rotation persisted). No outpost is spawned at request time — the chat
   WebSocket goes straight to the tenant's `ws_host`.
+- **复制登录地址（Copy sign-in link）**: the same browser OAuth flow, but
+  magpie doesn't open a browser — copy the link and paste it into the
+  browser you use to sign in to Amazon. The callback is `127.0.0.1`, so that
+  browser must run on the same machine as magpie.
 - **本地凭据（Local credentials）**: on Windows reads the app's session from
   Credential Manager and chats directly (OIDC auto-refresh, write-back keeps
   the app's tokens valid); elsewhere or on failure it boots the bundled
