@@ -8,226 +8,100 @@
   <a href="https://www.npmjs.com/package/magpie-aws-quick-bridge">npm</a>
 </p>
 
-我做的一个 [Magpie](https://usemagpie.ai) 供应商插件，把 **Amazon Quick（QuickWork）** 接入 Magpie：在 Magpie 里登录 Amazon Quick 账号后，Claude Code、Codex、OpenCode 等所有 agent 都能以 `aws-quick/<model>` 使用它。
+这是我做的一个小工具：把 **Amazon Quick（QuickWork）** 账号接到 Claude Code、Codex、OpenCode 这些编程 agent 上用。
 
-使用中遇到问题或有建议，欢迎提 [issue](https://github.com/DaBinBinah/magpie-AWS-Quick-bridge/issues)，或者在 [X 上找我](https://x.com/yedabinbinah)。
+**同一个包，[Magpie](https://usemagpie.ai) 和 [CC Switch](https://github.com/farion1231/cc-switch) 都支持：**
 
-> 非官方项目，与 Amazon / AWS 无关联。请仅在你拥有或获得明确授权的账号上使用，并遵守相关服务条款。
+| 你在用 | 怎么接 |
+|---|---|
+| **Magpie** | 装成 Magpie 插件，在 Magpie 里登录，模型是 `aws-quick/smart` 这样的名字 |
+| **CC Switch** | 在本机起一个 API 服务，一条命令导入 CC Switch，切过去就能用 |
 
-## 功能
+两种用法互不影响，可以同时用。
 
-- 浏览器登录 Amazon Quick：个人账号（social）与企业账号（IAM Identity Center / SSO），PKCE
-- Magpie 在另一台电脑（服务器、Docker）上时，把浏览器最后停下的地址粘贴回 Magpie 即可完成登录
-- 多账号、故障切换、并发上限由 Magpie 负责；token 到期前 10 分钟由 Magpie 调用插件自动续期
-- agent 用哪种 API 都可以：Magpie 网关先转成 chat completions 再交给插件（Chat Completions、Responses、Anthropic Messages 已在网关上验证）
-- 流式与非流式回复，返回上游 `turn_usage` 的 token 用量和缓存命中；模型的思考过程以 `reasoning_content` 返回
-- `magpie quota` 显示 Amazon Quick 的套餐、月度额度和会话额度
-- 模型列表按账号读取：账号里被停用的模式不列出，开通了 advanced 的账号多一个 `aws-quick/advanced`
-- 多轮对话复用 Amazon Quick 服务端的线程，后续请求只发送新增的消息
-- Amazon Quick 单帧上限是 64 KB：超出时先把工具定义压成一行签名，再把过长的对话上传为附件让模型读取，agent 的长提示词和大段工具结果不会因此失败
-- 图片输入（`data:` URL）上传为附件
-- 客户端工具调用：`tools` 通过 `<client_tool_call>` 文本协议桥接，返回标准 `tool_calls`；带工具的流式回复也是边生成边输出，只有工具调用标记本身会被拦下
-- `system` / `developer` 消息走 Amazon Quick 的 `custom_prompt`，并附加覆盖声明，让模型忽略服务端追加的提示词
-- 默认使用隐身线程，不进入 Amazon Quick 自己的聊天列表和记忆
-- 没有运行时依赖，也没有安装脚本
+> 非官方项目，和 Amazon / AWS 没有关系。请只用你自己的、或者得到授权的账号，并遵守 Amazon Quick 的服务条款。
+
+## 用在 Magpie 里
+
+```sh
+magpie plugin add magpie-aws-quick-bridge     # 安装
+magpie plugin login aws-quick                 # 登录：浏览器里登 Amazon Quick，看到 Login complete 就好了
+```
+
+在 Magpie 应用里也一样：**插件 → 添加插件** 填 `magpie-aws-quick-bridge`，然后在 **Amazon Quick** 那一行点登录。个人账号和企业账号（IAM Identity Center / SSO）都可以，登多个账号就重复登录几次。
+
+装好以后所有 agent 都能用 `aws-quick/smart`、`aws-quick/fast`、`aws-quick/balanced`、`aws-quick/auto`，`magpie quota` 能看到剩余额度。
+
+## 用在 CC Switch 里
+
+CC Switch 没有插件，它只管给 agent 换「API 地址 + Key」。所以我在这个包里带了一个本机 API 服务，CC Switch 指向它就行。需要 Node.js 20 以上。
+
+```sh
+npx magpie-aws-quick-bridge login             # 1. 登录（企业账号加 --enterprise --region <区域>）
+npx magpie-aws-quick-bridge serve             # 2. 启动本机 API，这个窗口要一直开着
+npx magpie-aws-quick-bridge ccswitch --open   # 3. 另开一个终端，导入 CC Switch，每个应用点一次确认
+```
+
+然后在 CC Switch 里切到 **Amazon Quick**。第 3 步会给 Claude Code、Codex、OpenCode 各加一个；只要其中一个就加 `--app claude`（或 `codex`、`opencode`）。
+
+想手动填也行，任何能填「地址 + Key」的工具都能这么接：
+
+| 应用 | API 地址 | 接口格式 | 模型 |
+|---|---|---|---|
+| Claude Code | `http://127.0.0.1:18765` | Anthropic Messages | `smart` |
+| Codex | `http://127.0.0.1:18765/v1` | OpenAI Responses | `smart` |
+| OpenCode 等 | `http://127.0.0.1:18765/v1` | OpenAI Chat Completions | `smart` |
+
+Key 用 `npx magpie-aws-quick-bridge status` 看。
+
+几件要知道的事：
+
+- **`serve` 得一直开着**，关了 agent 就连不上。macOS 上可以先 `npm install -g magpie-aws-quick-bridge`，再 `magpie-aws-quick-bridge service install` 让它在后台常驻。
+- CC Switch 里**不用开「本地路由」**，每个应用拿到的已经是它自己的接口格式。
+- token 快到期会自己续；真过期了请求会报 401，重新 `login` 一次就行，不用重启 `serve`。
+- 服务只听 `127.0.0.1`，每个请求都要带 Key。别把它放到公网上。
+- Claude Code 启动时会提示不认识 `smart` 这个模型名，不影响使用。
+- Gemini CLI 用的是另一种接口，暂时不支持。
+
+其他命令：`status`（地址、Key、账号、额度）、`serve --port <端口>`、`key --new`（换 Key）、`service uninstall`、`logout`。
 
 ## 模型
 
-| Magpie 里的模型 | Amazon Quick 的 agent mode |
+| 模型 | 说明 |
 |---|---|
-| `aws-quick/smart` | smart |
-| `aws-quick/fast` | fast |
-| `aws-quick/balanced` | balanced |
-| `aws-quick/auto` | smart，并打开 Amazon Quick 的自动路由 |
-| `aws-quick/advanced` | advanced（仅账号开通时出现） |
+| `smart` | 最强的一档，默认用它 |
+| `balanced` | 中间档 |
+| `fast` | 最快的一档 |
+| `auto` | 让 Amazon Quick 自己选 |
+| `advanced` | 账号开通了才有 |
 
-这些是 Amazon Quick 的 agent mode，不是具体的模型名。我的账号上 fast、balanced、smart 实际分别由 Claude Haiku、Sonnet、Opus 回答（见每轮用量里的 `resolved_model_id`），其他账号可能不同。上下文长度按上游每轮用量里报告的 `context_window` 填为 1M；最大输出（fast 32k，其余 64k）是估计值，Amazon Quick 没有公布。推理档位 low / medium / high 对应上游的 `thinking_effort`。
+在 Magpie 里前面加 `aws-quick/`。在我的账号上 fast、balanced、smart 背后分别是 Claude Haiku、Sonnet、Opus，别的账号可能不一样。
 
-## 安装
+## 能做什么
 
-```sh
-# 从 npm
-magpie plugin add magpie-aws-quick-bridge
+- 流式回复、思考过程、token 用量
+- 工具调用：读写文件、跑命令这些 agent 的工具都能用
+- 多轮对话接着上一轮的线程走，只发新增的内容
+- 很长的提示词和工具结果、图片会自动转成附件，不会因为 Amazon Quick 的 64 KB 单帧上限而失败
+- 额度查询，模型列表按账号实际开通的来
 
-# 从 GitHub
-magpie plugin add github:DaBinBinah/magpie-AWS-Quick-bridge
+## 我验证到了哪一步
 
-# 或者从本地文件夹，就地加载，不安装任何东西
-magpie plugin add /path/to/magpie-AWS-Quick-bridge
-```
+- **真实账号（我自己的个人账号）**：Magpie 插件的登录、对话、工具调用、线程复用、附件、额度；CC Switch 模式下 Claude Code、Codex、OpenCode 经本机 API 读文件、写文件。
+- **只用模拟服务测过**：企业账号、`advanced` 模型、图片附件。
+- 工具调用是靠提示词约定的文本协议做的，模型偶尔会不按约定来，重试一下通常就好。
+- Amazon Quick 每轮会带上它自己的一大段系统提示词，所以 token 数看起来很大；额度按它的 credits 算。
 
-在应用里：**插件 → 添加插件**，填上面任一写法。
+更多细节（全部选项、远程登录、工作方式、测试、已知限制）在 [docs/DEVELOPMENT.md](https://github.com/DaBinBinah/magpie-AWS-Quick-bridge/blob/main/docs/DEVELOPMENT.md)。
 
-## 登录
+## 找我
 
-```sh
-magpie plugin login aws-quick
-```
-
-在应用里则是在 **Amazon Quick** 那一行点登录。步骤：
-
-1. 选择账号类型：个人账号，或企业账号（再填组织所在的 AWS 区域，留空为 `us-east-1`）。
-2. Magpie 打开浏览器，在 Amazon Quick 的页面完成登录；浏览器会回到本机的回调端口（默认 `18080`，被占用时个人账号自动换用 `18081`–`18083` 或任意空闲端口）。
-3. 接着自动跳到 AWS 的授权页，同意后看到 “Login complete” 即完成。
-
-需要多个账号时重复登录即可；同一邮箱再次登录会替换原来的那个账号。
-
-### Magpie 在另一台电脑上
-
-浏览器访问不到服务器的 `localhost` 时：
-
-1. 在自己的浏览器里打开登录说明中给出的 `https://quick.aws.com/sn?qwSurface=…` 地址并登录。
-2. 浏览器会停在一个打不开的 `http://localhost:18080/callback?nonce=…` 页面。把地址栏里的**完整地址**粘贴回 Magpie（终端里直接粘贴后回车；应用里填进登录窗口的 Callback URL）。
-3. Magpie 给出下一步要打开的 AWS 授权地址（终端里是一行 `Amazon Quick sign-in, next page to open: …`）。打开它并同意。
-4. 浏览器停在 `http://127.0.0.1:18080/?code=…`，再把这个完整地址粘贴回 Magpie，登录完成。
-
-也可以用 SSH 端口转发让回调直接可达：`ssh -L 18080:127.0.0.1:18080 <服务器>`。
-
-### 登录信息存在哪里
-
-存在 Magpie 配置目录的 `plugin-auth.json`（权限 600，`~/.config/magpie/` 或 `$XDG_CONFIG_HOME/magpie/`），包括 access token、refresh token、id token、OAuth client 的 id 和 secret，以及邮箱、租户地址等账号信息。登录密码只在 Amazon 的页面里输入，插件接触不到。`magpie plugin logout aws-quick` 删除它。
-
-## 选项
-
-```sh
-magpie plugin options magpie-AWS-Quick-bridge '{"thinking_effort": "medium", "timezone": "Asia/Shanghai", "locale": "zh-CN"}'
-```
-
-| 选项 | 默认 | 说明 |
-|---|---|---|
-| `thinking_effort` | 空 | 请求没有指定推理档位时使用：`off`、`low`、`medium`、`high` |
-| `default_model` | `smart` | 收到未知模型名时使用的 agent mode |
-| `timezone` / `locale` | `UTC` / `en-US` | 发给上游的时区与语言 |
-| `request_timeout` | `5m` | 单次上游请求超时（`30s`、`5m`、`1h`，或秒数） |
-| `keep_sessions` | `false` | 对话进入 Amazon Quick 的聊天列表和记忆，而不是使用隐身线程（也可在供应商编辑页的插件选项里开关） |
-| `web_search` | `false` | 允许 Amazon Quick 使用它自己的联网搜索；请求里的 `web_search_enabled` 优先 |
-| `stateful` | `true` | 多轮对话复用服务端线程、只发新增消息；`false` 时每次请求重发全部历史 |
-| `attachments` | `true` | 放不进一帧的内容和图片上传为附件；`false` 时改为截断较早的内容 |
-| `max_frame_bytes` | `60000` | 一帧里留给提示词的字节数上限，超过就压缩或转附件；`0` 关闭这项处理 |
-| `app_version` | `1.2.4660` | 上游握手使用的 appVersion |
-| `surface` | `QUICK_WORK_DESKTOP_WINDOWS` | 上游握手使用的 surfaceType |
-| `outpost_id` / `working_session_id` | 空 | 上游握手可选字段 |
-| `callback_port` | `18080` | 本机 OAuth 回调端口；`0` 为任意空闲端口 |
-| `login_timeout` | `30m` | 等待浏览器完成登录的时间 |
-| `build_stage` | `prod` | `prod`、`beta`、`integ`、`dev` |
-| `proxy` | 空 | 聊天 WebSocket 使用的代理地址（见下面的限制） |
-| `oidc_base` / `discovery_url` / `data_plane_url` | 空 | 覆盖上游地址，仅用于测试（模拟上游） |
-
-改动选项会重启插件宿主，从下一个请求起生效。
-
-## 工作方式
-
-```mermaid
-sequenceDiagram
-    participant A as agent
-    participant M as Magpie 网关
-    participant P as 本插件
-    participant Q as Amazon Quick
-
-    A->>M: 任意 API（Chat / Responses / Messages / Gemini）
-    M->>P: fetch：POST /chat/completions（已选好账号）
-    P->>Q: （需要时）上传附件
-    P->>Q: WebSocket：session_connect / user_message
-    Q-->>P: thinking_delta / text_delta / turn_usage / message_complete
-    P-->>M: JSON 或 SSE（文本、tool_calls、usage）
-    M-->>A: 按 agent 的 API 格式流式返回
-```
-
-- 每个请求打开一条到 Amazon Quick 的 WebSocket，把要发送的消息转成一条 `user_message`：单条用户消息原样发送，多轮对话和工具结果按 `User:` / `Assistant tool call (...)` / `Tool result (...)` 渲染。
-- 线程复用：Magpie 通过 `chat.headers` 钩子把会话 ID 带给插件；同一账号、同一会话、历史前缀一致的请求会接到上一轮的服务端线程上，只发新增消息，系统提示词没变也不重发。历史被改写（压缩、回退）或线程缓存过期（内存里保留 6 小时）时，开新线程重发全部历史。
-- 64 KB 帧上限：按“完整工具定义 → 一行签名 → 缩短系统提示词（最多占半帧）→ 过长内容转附件 → 截断较早的内容”的顺序处理，直到一帧放得下。附件经 Amazon Quick 的上传接口和 DLP 检查后挂到线程上，由模型用它自己的文件工具读取。
-- 工具只在客户端执行：插件把模型输出的 `<client_tool_call>{"name":…,"arguments":…}</client_tool_call>` 转成 `tool_calls`，下一轮再把工具结果作为文本带回去。`tool_choice: "none"` 关闭桥接，指定函数时只接受该函数。
-- 出错时尽量用 Magpie 能处理的状态回答：上游拒绝登录回 401（账号被标记为需要重新登录），限流回 429，超时回 504，其他上游错误回 502，Magpie 据此切换到下一个账号或模型。回复开始之后的错误只能写进流里。
-
-代码结构：
-
-```
-index.mjs            插件入口：config / provider.models / chat.headers / auth（登录、refresh、usage、loader）钩子
-opencode.mjs         Magpie 与 OpenCode 1.x 加载的入口
-opencode2.mjs        OpenCode 2.x 的入口（Magpie 社区仓库提供的适配器）
-plugin/oauth.mjs     发现、IDC client 注册、PKCE、换 token、refresh、user-info
-plugin/login.mjs     本机回调端口上的浏览器登录
-plugin/upstream.mjs  一轮对话的 WebSocket 收发
-plugin/wire.mjs      AIDP / Gateway 帧、AWS event-stream、CBOR
-plugin/qbs.mjs       账号接口：额度、设置、附件上传
-plugin/threads.mjs   请求与服务端线程的对应关系
-plugin/messages.mjs  OpenAI 消息 → user_message 文本与 custom_prompt
-plugin/toolbridge.mjs 客户端工具的文本协议与流式解析
-plugin/chat.mjs      chat completions 的 JSON / SSE 回复
-test/                单元测试、模拟上游、端到端测试
-```
-
-## 开发与测试
-
-需要 [Bun](https://bun.sh)。
-
-```sh
-bun test                              # 单元测试 + 对模拟上游的端到端测试
-```
-
-在沙箱里的 Magpie 中试用，不会碰到你正在用的 Magpie、agent 和登录信息：
-
-```sh
-sb=$(mktemp -d)
-m() { env HOME=$sb XDG_CONFIG_HOME=$sb/.config XDG_CACHE_HOME=$sb/.cache MAGPIE_ADDR=127.0.0.1:3499 magpie "$@"; }
-m plugin add . </dev/null
-m plugin --json                       # 登录方式、账号、模型、加载错误
-m plugin login aws-quick              # 真实登录
-m provider test aws-quick             # 发一个很小的请求
-m plugin logout aws-quick
-```
-
-没有 Amazon Quick 账号时可以用仓库里的模拟上游走通整个流程（登录页、OIDC、user-info、聊天 WebSocket 都在本机）：
-
-```sh
-bun test/mock-upstream.mjs 39100      # 会打印下面要用的选项
-m plugin options magpie-AWS-Quick-bridge '{"oidc_base":"http://127.0.0.1:39100","discovery_url":"http://127.0.0.1:39100/sn","data_plane_url":"http://127.0.0.1:39100"}'
-m plugin login aws-quick
-m provider test aws-quick
-```
-
-## 发布与上架
-
-1. **版本**：改 `package.json` 的 `version`。
-2. **npm**：`npm publish`。之后用户可以 `magpie plugin add magpie-aws-quick-bridge`，Magpie 插件页的搜索也能按 `opencode` 关键词找到它，详情页显示这份 README。
-3. **GitHub 标签**：给仓库加上 `magpie-plugin` topic，几分钟后它会出现在 **插件 → 发现 → 非官方插件 · GitHub**。卡片的名字、简介和图标取自 `package.json` 的 `magpie.name`、`magpie.summary`、`magpie.icon`。发布到 npm 且 `repository` 指向本仓库时从 npm 安装，否则按仓库当前代码安装（插件加载的文件都已提交在仓库里）。
-4. **推荐列表**：向 [magpie-community/plugins](https://github.com/magpie-community/plugins) 提一个 PR，在 `registry.json` 里加一项：
-
-   ```json
-   { "package": "magpie-aws-quick-bridge", "name": "Amazon Quick", "providers": ["aws-quick"],
-     "icon": "https://raw.githubusercontent.com/DaBinBinah/magpie-AWS-Quick-bridge/main/assets/icon-128.png",
-     "summary": { "en": "Amazon Quick (QuickWork) with browser sign-in for personal and enterprise accounts: streaming chat and client tool calls. Unofficial.",
-                  "zh": "浏览器登录 Amazon Quick（QuickWork）个人或企业账号，支持流式对话与客户端工具调用。非官方。" } }
-   ```
-
-   `MAGPIE_PLUGIN_MARKET=<url>` 可以让 Magpie 改读另一份列表，用来在提 PR 前检查这一项。
-
-`package.json` 里的 `magpie.icon` 是内嵌的 128px logo（data URI），所以从文件夹或 git 安装时也有图标；仓库公开后可以换成上面那样的 `https://` 地址。
-
-## 限制
-
-- **真实上游的验证范围**：我用自己的个人账号（social）对真实的 Amazon Quick 验证过浏览器登录、流式对话、系统提示词、思考输出、工具调用循环、线程复用、附件上传和额度查询。企业账号（IAM Identity Center）、`gateway` / `social_gateway` 的 CBOR 路径、advanced 模式和图片附件只对仓库里的模拟上游或单元测试验证过。在 Magpie 里的安装、登录、粘贴回调登录、经网关请求和 `magpie quota` 是对模拟上游验证的。
-- 只有聊天。`temperature`、`max_tokens`、`stop`、`response_format` 等采样参数不会传给上游；`n > 1` 返回 400。
-- 输入是文本和 `data:` URL 形式的图片；远程图片地址、音频、文件会变成 `[image]`、`[audio]`、`[file]` 占位。
-- Amazon Quick 会在每轮加上它自己的系统提示词和工具（我的账号上一条短消息约占 6.9 万输入 token，大部分命中缓存），插件无法去掉；额度按 Amazon Quick 的 credits 计。
-- 内容转成附件后，模型要先用它自己的文件工具读取，这一轮会慢一些。
-- 线程缓存在插件进程的内存里，Magpie 重启后下一次请求会重发全部历史。
-- 工具桥接是文本协议，模型偶尔可能不遵守；回复以 `{`、`[` 或反引号开头时会先整段缓冲，以判断它是不是一个没带标记的工具调用。
-- 代理：按 Magpie 的文档，插件用 `fetch` 发出的请求（登录、续期）走 Magpie 给供应商或账号设置的代理。聊天用的是 WebSocket，它是否也走这个代理没有验证过；需要时用 `proxy` 选项明确指定（如 `http://127.0.0.1:7890`）。
-- OpenCode 2.x 的入口（`opencode2.mjs`）只通过了 Magpie 社区仓库的检查脚本，没有在 OpenCode 2.x 里实际运行过。
-- 上游接口可能随官方客户端更新而变化；登录或聊天失败时先重新登录，必要时调整 `app_version`。
-
-## 作者
-
-DaBinBinah
-
-- X / Twitter：[@yedabinbinah](https://x.com/yedabinbinah)
-- GitHub：[DaBinBinah](https://github.com/DaBinBinah)
+用着有问题或者有想法，直接提 [issue](https://github.com/DaBinBinah/magpie-AWS-Quick-bridge/issues)，或者在 X 上找我：[@yedabinbinah](https://x.com/yedabinbinah)。
 
 ## License
 
 [GNU General Public License v3.0](LICENSE)。
 
-Magpie 插件部分（`index.mjs`、`plugin/`、`test/`）© 2026 DaBinBinah。登录流程、协议编解码和工具桥接移植自 [aws-quickwork-2api](https://github.com/jasonxu114514/aws-quickwork-2api)（© Jason Xu，GPL-3.0）；按 GPL-3.0 的要求保留这条来源说明，并以同一许可证发布。
+这个项目（`index.mjs`、`plugin/`、`gateway/`、`bin/`、`test/`）© 2026 DaBinBinah。
 
 `opencode2.mjs` 是 [magpie-community/plugins](https://github.com/magpie-community/plugins) 提供的 OpenCode 2.x 适配器，原样收录（社区收录的检查要求逐字节一致），MIT 许可证，见 [LICENSES/opencode2-MIT.txt](LICENSES/opencode2-MIT.txt)。
