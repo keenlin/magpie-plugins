@@ -217,6 +217,18 @@ OpenAI 格式。
 **前置条件**：本机跑着 `opencode serve`（`opencode serve --port 4599 --hostname 127.0.0.1`）。
 插件默认连 `http://127.0.0.1:4599`，可用 `options.zenServeURL` 改。
 
+Windows 上别用临时目录里的 npm 副本（会被清理），装正式版并做成服务：
+
+```bash
+scoop install opencode1          # 1.19.6，已验证的版本；opencode 是 2.x
+# 用 WinSW 注册成服务，开机自启
+gsudo D:/opencode/opencode-serve.exe install
+gsudo sc start opencode-serve
+```
+
+服务配置在 `D:/opencode/opencode-serve.xml`（可执行文件指向 `D:/scoop/apps/opencode1/current/opencode.exe`，
+日志在 `D:/opencode/logs/`，失败自动重启）。
+
 ### 出口池（Kilo）
 
 出口 = 一个出口方式。`src/pool.mjs` 按 `MAGPIE_FREE_EGRESS` 环境变量、`~/.config/magpie/
