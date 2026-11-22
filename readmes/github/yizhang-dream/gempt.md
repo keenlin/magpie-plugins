@@ -1,4 +1,4 @@
-# GemPT v0.3.1
+# GemPT v0.4.0
 
 [English Quick Start & Docs](./README.en.md) · [Antigravity Plugin README](./plugin/README.md) · [Third-Party Licenses](./THIRD_PARTY_LICENSES.txt)
 
@@ -10,7 +10,7 @@ GemPT 让 Gemini 通过本机 [Magpie](https://github.com/yetone/magpie) 咨询 
 | --- | --- | --- |
 | **Node.js** | `>= 20.11.0` | 运行 MCP server、hooks、CLI 与安装器 |
 | **Magpie** | `>= 0.1.1340` | 本地网关（默认 `http://127.0.0.1:3425`），从 [yetone/magpie](https://github.com/yetone/magpie) / [usemagpie.ai](https://usemagpie.ai) 安装并登录 ChatGPT/Codex 订阅 |
-| **Magpie 侧 GemPT 插件** | `0.3.1` | 提供 `Plugins → GemPT` 面板，并托管共享 Codex `app-server`（Windows 跨 Magpie 热重载独立存活，支持面板一键重启）；**仅单独安装 Codex CLI 无法替代** |
+| **Magpie 侧 GemPT 插件** | `0.4.0` | 提供 `Plugins → GemPT` 面板，并托管共享 Codex `app-server`（Windows 跨 Magpie 热重载独立存活，支持面板一键重启）；**仅单独安装 Codex CLI 无法替代** |
 | **Codex CLI** | `@openai/codex`（已实测 `0.164.0`） | 仅 `gpt_run` 仓库执行需要；通过 `npm install -g @openai/codex` 安装（纯 `gpt_ask` 咨询可不装） |
 | **Git** | 任意现代版本 | 仅并发隔离 `workspace="share"` 需要 |
 
@@ -23,11 +23,11 @@ GemPT 让 Gemini 通过本机 [Magpie](https://github.com/yetone/magpie) 咨询 
 ### 2. 安装 Magpie 侧插件
 
 ```bash
-# 从 npm 安装（或锁定版本：gempt@0.3.1）
+# 从 npm 安装（或锁定版本 gempt@0.4.0）
 magpie plugin add gempt
 
 # 或从 GitHub 安装（锁定 tag）
-magpie plugin add github:yizhang-dream/gempt#v0.3.1
+magpie plugin add github:yizhang-dream/gempt#v0.4.0
 ```
 
 在 Magpie 左侧栏打开 **Plugins → GemPT**，确认网关连通、订阅模型就绪以及共享 Codex `app-server` 状态正常，点击 **“一键启用订阅配置”**（或运行 `gempt init`）。
@@ -38,9 +38,9 @@ magpie plugin add github:yizhang-dream/gempt#v0.3.1
 
 ```bash
 # 推荐：锁定版本一键安装
-npx --yes gempt@0.3.1 install-agy
+npx --yes gempt@0.4.0 install-agy
 # 或直接从 GitHub tag 安装
-npx --yes github:yizhang-dream/gempt#v0.3.1 install-agy
+npx --yes github:yizhang-dream/gempt#v0.4.0 install-agy
 ```
 
 从本地源码安装时：
@@ -62,7 +62,7 @@ gempt init --non-interactive
 ```
 
 随后在 Antigravity 中：
-1. 首次咨询：调用 `gpt_ask(goal="Reply with OK", tier="sonnet")` 验证 Magpie 网关连通。
+1. 首次咨询：调用 `gpt_ask(goal="Reply with OK")` 验证当前 Gemini 配对与 Magpie 网关连通。
 2. 首次只读委派：调用 `gpt_run(goal="Inspect repository layout and report key files", cwd="<你的项目路径>", access="inspect")`，并按返回的 `wait_command` 后台等待唤醒。
 
 ### 从 Python 旧版升级
@@ -74,28 +74,24 @@ gempt init --non-interactive
 | Antigravity stdio (`gempt_gempt`) | Magpie HTTP | 用途 |
 | --- | --- | --- |
 | `gpt_run` | `gempt_run` | 异步 Codex 仓库任务。传 `goal`、`cwd`，用 `access="inspect"` 只读调查或 `access="change"` 改代码。多路并发改同一 Git 仓库时传 `access="change"` + `workspace="share"`（基于已提交 `HEAD` 建独立 worktree；只读 `inspect` 禁止使用 `share`）。 |
-| `gpt_ask` | `gempt_ask` | 同步咨询。传 `goal`，可选 `cwd`、`file_paths`、`tier`（`sonnet`/`opus`/`fable`/`chore`）与 `session_id`。 |
+| `gpt_ask` | `gempt_ask` | 同步咨询。传 `goal`，可选 `cwd`、`file_paths` 与 `session_id`。整理日志或摘要时传 `tier="chore"`。 |
 | `gpt_ctl` | `gempt_ctl` | 状态查询、转向、中止或回复 `ask_gemini`（`action="status"|"steer"|"interrupt"|"reply"`）。在 Antigravity 调用 `gpt_ctl({})` 打开 **GemPT Live** 侧栏。 |
 
 `gpt_run` 返回 `run_id`、`session_id` 和 `wait_command`。请优先原样通过 `run_command(WaitMsBeforeAsync=500)` 后台执行返回的 `wait_command` 等待系统唤醒（终端手动等待可用 `gempt-wait <run_id>`、`gempt-wait id1,id2` 或 `gempt-wait --all id1,id2`）。续聊传 `session_id`；失败返工省略 `session_id` 开新线程。
 
-## 分工档位与路由模型说明
+新线程按 Antigravity 当前的 Gemini 家族配对，已知家族也可用 `gemini_family` 传入。回执用 `paired:<family>` 标识配对，用 `mcp` 标识未识别家族时走默认模型。旧脚本显式传入 `tier` 时仍按指定档位路由。
 
-GemPT 将「**何时派给 GPT**」与「**派给哪一档模型**」解耦：
-- **5 档工作分工（Work Split，在 Magpie 面板切换）**：`0%` 关闭 / `15%` 重活提示 / `35%` 源码写转 GPT / `60%` 源码写 + 每回合 5 步核实止损 / `80%` 入口直派 + 2 步核实（80% 档计入 Gemini 前端编排约 15–20% 的占比下限）。
-- **3 档执行模型 + `chore` 旁路**：
-  - `sonnet`（~75% 日常开发）、`opus`（~20% 复杂工程）、`fable`（~5% 顶配攻坚）；`chore` 为免费高速旁路（仅 `gpt_ask`，用于摘要/压缩/分类）。
-  - 模板中的 `Sol`（`codex/gpt-6.2-sol`）、`Astra`（`codex/gpt-6.2-astra`）均为 **Magpie 网关模型标识**，可在 `~/.config/gempt/config.json` 或 [templates/magpie-groups.template.json](./templates/magpie-groups.template.json) 中按你实际的订阅模型自由修改。
-  - `/gempt-sonnet`、`/gempt-opus`、`/gempt-fable`、`/gempt-chore` 快捷技能用于引导对应档位咨询或调用 `gempt tier` 切换共享默认档位（`gpt_run` 的实际执行档位以共享配置与面板为准）。
+## 控制面板的两种用法
+
+- **MCP 编排供 Antigravity 使用。** 在 `Plugins → GemPT` 为 Hydrogen、Neon、Carbon 选择 GPT/Codex 模型，或选择「默认模型」以使用 Magpie 探测到的默认 Codex 订阅模型。面板同时提供思考强度、Swarm、执行权限、容灾和实际 Token 占比。工作分工有 `0%` 关闭、`15%` 重活提示、`35%` 源码写转 GPT、`60%` 加每回合 5 步核实止损，以及 `80%` 入口直派加 2 步核实。用 `/gempt` 编排任务，用 `/gempt-chore` 做摘要、压缩和分类。
+- **路由组直连供其他 Agent 和客户端使用。** 在面板预览、创建、复制 `group/gempt-sonnet`、`group/gempt-opus`、`group/gempt-fable`，然后在客户端模型栏选用。终端可用 `gempt presets --preview` 预览、`gempt presets --apply` 创建。
 
 ## 命令行
 
 ```sh
 gempt discover
 gempt init --non-interactive
-gempt tier opus
 gempt sandbox workspace-write
-gempt effort auto
 gempt status --run-id <run_id> --wait
 gempt prune-worktrees <repo_dir> --max-age-hours 168
 gempt presets --preview
