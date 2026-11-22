@@ -20,10 +20,15 @@
 - Magpie 在另一台电脑（服务器、Docker）上时，把浏览器最后停下的地址粘贴回 Magpie 即可完成登录
 - 多账号、故障切换、并发上限由 Magpie 负责；token 到期前 10 分钟由 Magpie 调用插件自动续期
 - agent 用哪种 API 都可以：Magpie 网关先转成 chat completions 再交给插件（Chat Completions、Responses、Anthropic Messages 已在网关上验证）
-- 流式与非流式回复，返回上游 `turn_usage` 的 token 用量和缓存命中
+- 流式与非流式回复，返回上游 `turn_usage` 的 token 用量和缓存命中；模型的思考过程以 `reasoning_content` 返回
+- `magpie quota` 显示 Amazon Quick 的套餐、月度额度和会话额度
+- 模型列表按账号读取：账号里被停用的模式不列出，开通了 advanced 的账号多一个 `aws-quick/advanced`
+- 多轮对话复用 Amazon Quick 服务端的线程，后续请求只发送新增的消息
+- Amazon Quick 单帧上限是 64 KB：超出时先把工具定义压成一行签名，再把过长的对话上传为附件让模型读取，agent 的长提示词和大段工具结果不会因此失败
+- 图片输入（`data:` URL）上传为附件
 - 客户端工具调用：`tools` 通过 `<client_tool_call>` 文本协议桥接，返回标准 `tool_calls`；带工具的流式回复也是边生成边输出，只有工具调用标记本身会被拦下
-- `system` / `developer` 消息走 Amazon Quick 原生的 `system_prompt`，并附加覆盖声明，让模型忽略服务端追加的提示词
-- 默认每轮结束后删除上游会话，不污染 Amazon Quick 自己的聊天列表
+- `system` / `developer` 消息走 Amazon Quick 的 `custom_prompt`，并附加覆盖声明，让模型忽略服务端追加的提示词
+- 默认使用隐身线程，不进入 Amazon Quick 自己的聊天列表和记忆
 - 没有运行时依赖，也没有安装脚本
 
 ## 模型
@@ -33,9 +38,10 @@
 | `aws-quick/smart` | smart |
 | `aws-quick/fast` | fast |
 | `aws-quick/balanced` | balanced |
-| `aws-quick/auto` | auto |
+| `aws-quick/auto` | smart，并打开 Amazon Quick 的自动路由 |
+| `aws-quick/advanced` | advanced（仅账号开通时出现） |
 
-Amazon Quick 没有模型列表接口，这四个是它的 agent mode。上下文长度（200k）和最大输出（32k）是插件里填的估计值，Amazon Quick 没有公布；推理档位 low / medium / high 对应上游的 `thinking_effort`。
+这些是 Amazon Quick 的 agent mode，不是具体的模型名。我的账号上 fast、balanced、smart 实际分别由 Claude Haiku、Sonnet、Opus 回答（见每轮用量里的 `resolved_model_id`），其他账号可能不同。上下文长度按上游每轮用量里报告的 `context_window` 填为 1M；最大输出（fast 32k，其余 64k）是估计值，Amazon Quick 没有公布。推理档位 low / medium / high 对应上游的 `thinking_effort`。
 
 ## 安装
 
@@ -93,7 +99,11 @@ magpie plugin options magpie-AWS-Quick-bridge '{"thinking_effort": "medium", "ti
 | `default_model` | `smart` | 收到未知模型名时使用的 agent mode |
 | `timezone` / `locale` | `UTC` / `en-US` | 发给上游的时区与语言 |
 | `request_timeout` | `5m` | 单次上游请求超时（`30s`、`5m`、`1h`，或秒数） |
-| `keep_sessions` | `false` | 保留上游会话，不在一轮结束后删除（也可在供应商编辑页的插件选项里开关） |
+| `keep_sessions` | `false` | 对话进入 Amazon Quick 的聊天列表和记忆，而不是使用隐身线程（也可在供应商编辑页的插件选项里开关） |
+| `web_search` | `false` | 允许 Amazon Quick 使用它自己的联网搜索；请求里的 `web_search_enabled` 优先 |
+| `stateful` | `true` | 多轮对话复用服务端线程、只发新增消息；`false` 时每次请求重发全部历史 |
+| `attachments` | `true` | 放不进一帧的内容和图片上传为附件；`false` 时改为截断较早的内容 |
+| `max_frame_bytes` | `60000` | 一帧里留给提示词的字节数上限，超过就压缩或转附件；`0` 关闭这项处理 |
 | `app_version` | `1.2.4660` | 上游握手使用的 appVersion |
 | `surface` | `QUICK_WORK_DESKTOP_WINDOWS` | 上游握手使用的 surfaceType |
 | `outpost_id` / `working_session_id` | 空 | 上游握手可选字段 |
@@ -116,25 +126,32 @@ sequenceDiagram
 
     A->>M: 任意 API（Chat / Responses / Messages / Gemini）
     M->>P: fetch：POST /chat/completions（已选好账号）
-    P->>Q: WebSocket：session_connect / session_create / user_message
-    Q-->>P: text_delta / turn_usage / message_complete
+    P->>Q: （需要时）上传附件
+    P->>Q: WebSocket：session_connect / user_message
+    Q-->>P: thinking_delta / text_delta / turn_usage / message_complete
     P-->>M: JSON 或 SSE（文本、tool_calls、usage）
     M-->>A: 按 agent 的 API 格式流式返回
 ```
 
-- 每个请求打开一条到 Amazon Quick 的 WebSocket，把整段对话转成一条 `user_message`：单条用户消息原样发送，多轮对话和工具结果按 `User:` / `Assistant tool call (...)` / `Tool result (...)` 渲染。
+- 每个请求打开一条到 Amazon Quick 的 WebSocket，把要发送的消息转成一条 `user_message`：单条用户消息原样发送，多轮对话和工具结果按 `User:` / `Assistant tool call (...)` / `Tool result (...)` 渲染。
+- 线程复用：Magpie 通过 `chat.headers` 钩子把会话 ID 带给插件；同一账号、同一会话、历史前缀一致的请求会接到上一轮的服务端线程上，只发新增消息，系统提示词没变也不重发。历史被改写（压缩、回退）或线程缓存过期（内存里保留 6 小时）时，开新线程重发全部历史。
+- 64 KB 帧上限：按“完整工具定义 → 一行签名 → 缩短系统提示词（最多占半帧）→ 过长内容转附件 → 截断较早的内容”的顺序处理，直到一帧放得下。附件经 Amazon Quick 的上传接口和 DLP 检查后挂到线程上，由模型用它自己的文件工具读取。
 - 工具只在客户端执行：插件把模型输出的 `<client_tool_call>{"name":…,"arguments":…}</client_tool_call>` 转成 `tool_calls`，下一轮再把工具结果作为文本带回去。`tool_choice: "none"` 关闭桥接，指定函数时只接受该函数。
 - 出错时尽量用 Magpie 能处理的状态回答：上游拒绝登录回 401（账号被标记为需要重新登录），限流回 429，超时回 504，其他上游错误回 502，Magpie 据此切换到下一个账号或模型。回复开始之后的错误只能写进流里。
 
 代码结构：
 
 ```
-index.mjs            插件入口：config / auth（登录、refresh、loader）钩子
+index.mjs            插件入口：config / provider.models / chat.headers / auth（登录、refresh、usage、loader）钩子
+opencode.mjs         Magpie 与 OpenCode 1.x 加载的入口
+opencode2.mjs        OpenCode 2.x 的入口（Magpie 社区仓库提供的适配器）
 plugin/oauth.mjs     发现、IDC client 注册、PKCE、换 token、refresh、user-info
 plugin/login.mjs     本机回调端口上的浏览器登录
 plugin/upstream.mjs  一轮对话的 WebSocket 收发
 plugin/wire.mjs      AIDP / Gateway 帧、AWS event-stream、CBOR
-plugin/messages.mjs  OpenAI 消息 → user_message 文本与 system_prompt
+plugin/qbs.mjs       账号接口：额度、设置、附件上传
+plugin/threads.mjs   请求与服务端线程的对应关系
+plugin/messages.mjs  OpenAI 消息 → user_message 文本与 custom_prompt
 plugin/toolbridge.mjs 客户端工具的文本协议与流式解析
 plugin/chat.mjs      chat completions 的 JSON / SSE 回复
 test/                单元测试、模拟上游、端到端测试
@@ -189,13 +206,15 @@ m provider test aws-quick
 
 ## 限制
 
-- **真实上游的验证范围**：我目前只对仓库里的模拟上游做过端到端验证（包括在 Magpie 里登录、粘贴回调登录和经网关请求），还没有用真实的 Amazon Quick 账号验证过。`gateway` / `social_gateway` 的 CBOR 路径属实验性。
+- **真实上游的验证范围**：我用自己的个人账号（social）对真实的 Amazon Quick 验证过浏览器登录、流式对话、系统提示词、思考输出、工具调用循环、线程复用、附件上传和额度查询。企业账号（IAM Identity Center）、`gateway` / `social_gateway` 的 CBOR 路径、advanced 模式和图片附件只对仓库里的模拟上游或单元测试验证过。在 Magpie 里的安装、登录、粘贴回调登录、经网关请求和 `magpie quota` 是对模拟上游验证的。
 - 只有聊天。`temperature`、`max_tokens`、`stop`、`response_format` 等采样参数不会传给上游；`n > 1` 返回 400。
-- 输入只有文本：图片、音频、文件会变成 `[image]`、`[audio]`、`[file]` 占位。
+- 输入是文本和 `data:` URL 形式的图片；远程图片地址、音频、文件会变成 `[image]`、`[audio]`、`[file]` 占位。
+- Amazon Quick 会在每轮加上它自己的系统提示词和工具（我的账号上一条短消息约占 6.9 万输入 token，大部分命中缓存），插件无法去掉；额度按 Amazon Quick 的 credits 计。
+- 内容转成附件后，模型要先用它自己的文件工具读取，这一轮会慢一些。
+- 线程缓存在插件进程的内存里，Magpie 重启后下一次请求会重发全部历史。
 - 工具桥接是文本协议，模型偶尔可能不遵守；回复以 `{`、`[` 或反引号开头时会先整段缓冲，以判断它是不是一个没带标记的工具调用。
-- 没有用量接口，所以 `magpie quota` 不显示 Amazon Quick 的额度。
 - 代理：按 Magpie 的文档，插件用 `fetch` 发出的请求（登录、续期）走 Magpie 给供应商或账号设置的代理。聊天用的是 WebSocket，它是否也走这个代理没有验证过；需要时用 `proxy` 选项明确指定（如 `http://127.0.0.1:7890`）。
-- 以 OpenCode v1 插件的形式导出（`export default { id, server }`），只在 Magpie 里验证过，没有提供 OpenCode 2.x 的入口。
+- OpenCode 2.x 的入口（`opencode2.mjs`）只通过了 Magpie 社区仓库的检查脚本，没有在 OpenCode 2.x 里实际运行过。
 - 上游接口可能随官方客户端更新而变化；登录或聊天失败时先重新登录，必要时调整 `app_version`。
 
 ## 作者
@@ -210,3 +229,5 @@ DaBinBinah
 [GNU General Public License v3.0](LICENSE)。
 
 Magpie 插件部分（`index.mjs`、`plugin/`、`test/`）© 2026 DaBinBinah。登录流程、协议编解码和工具桥接移植自 [aws-quickwork-2api](https://github.com/jasonxu114514/aws-quickwork-2api)（© Jason Xu，GPL-3.0）；按 GPL-3.0 的要求保留这条来源说明，并以同一许可证发布。
+
+`opencode2.mjs` 是 [magpie-community/plugins](https://github.com/magpie-community/plugins) 提供的 OpenCode 2.x 适配器，原样收录（社区收录的检查要求逐字节一致），MIT 许可证，见 [LICENSES/opencode2-MIT.txt](LICENSES/opencode2-MIT.txt)。
