@@ -41,6 +41,7 @@ https://github.com/3056810551/magpie-amazon-quick
 
 1. **Amazon Quick account (browser)** *（推荐，尤其在 macOS 上：一键浏览器授权，独立会话，不触碰系统钥匙串）*
    - 直接打开浏览器前往 AWS IAM Identity Center（支持 Google / Amazon / Builder ID 等登录），完成授权后自动回传独立的 `access_token` 与 `refresh_token`，不依赖桌面端保持运行（`tenantUrl` 会从本机 `~/.quickwork/profiles.json` 自动识别）。
+   - **若浏览器打开后提示 `Your session has expired`**：通常是浏览器里残留了过期的 AWS Builder ID 会话 Cookie（`signin.aws`）。在浏览器地址栏左侧进入「Cookie 和网站数据 → 管理设备上的网站数据」（或 Chrome 打开 `chrome://settings/content/all?searchSubpage=signin.aws`）清除 `signin.aws` / `us-east-1.signin.aws` 的全部 Cookie 后重试即可；也可将授权链接复制到无痕窗口打开完成登录。
 2. **Amazon Quick desktop's sign-in** *（复用桌面端登录；Windows / Linux 开箱即用，macOS 会触发钥匙串授权）*
    - 自动复用当前桌面端已登录账号，不会改动磁盘或凭据库中的刷新令牌。
    - 若桌面端关闭期间访问令牌过期，只需打开一次 Amazon Quick 桌面端（或在桌面端重新登录），插件会在下次请求时自动读取更新后的令牌。
@@ -128,6 +129,7 @@ https://github.com/3056810551/magpie-amazon-quick
 
 1. **Amazon Quick account (browser)** *(recommended, especially on macOS — one-click browser login, independent session, never touches OS Keychain)*
    - Opens your browser directly to AWS IAM Identity Center (supporting Google / Amazon / Builder ID sign-in) using `quicksight:read_write` PKCE and obtains an independent `access_token` + `refresh_token` without disturbing your desktop session (auto-detects `tenantUrl` from local `~/.quickwork/profiles.json`).
+   - **If the browser shows `Your session has expired`**: This is caused by a stale AWS Builder ID session cookie under `signin.aws`. Clear all cookies and site data for `signin.aws` / `us-east-1.signin.aws` (e.g., via Chrome's address bar lock/settings icon → *Cookies and site data* → *Manage on-device site data*, or `chrome://settings/content/all?searchSubpage=signin.aws`) and retry, or open the authorization URL in an incognito/private window.
 2. **Amazon Quick desktop's sign-in** *(reuses desktop session; seamless on Windows/Linux, prompts Keychain on macOS)*
    - Uses your already signed-in Amazon Quick Desktop account automatically without touching its refresh token on disk/keyring.
    - If the desktop token expires while Amazon Quick Desktop is closed, open Amazon Quick Desktop (or sign in again there) and retry — the plugin re-reads the updated token on the next request.
