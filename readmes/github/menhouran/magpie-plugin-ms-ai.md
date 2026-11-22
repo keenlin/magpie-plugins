@@ -13,9 +13,22 @@
 - **按档位计费**：厂商按次扣魔粒，分档——`lite` 0.5 / `standard` 1 / `ultra` 2，另有 `discount` 0.2。
   这些字符串是厂商账本里的 `model_tier` 取值。价格**不写死**：`GET /openapi/v1/magicubes/spend/rates`
   （`scene=api_inference`）是厂商自己的计价表，插件每个进程读一次并以它为准，读不到才用内置值。
-  厂商的计价表**只按档位、不按模型**——没有任何接口能回答「这个模型属于哪档」，所以模型→档位的映射
-  仍是插件自己的实测表（2026-11-22 扫五个账号的账本得出）。插件按请求体里的 `model` 取档位给每次
-  调用定价，**未知模型一律按最高档 2 计**——宁可高估消耗，不可高估余额。
+  2026-11-22 实拉的表（`unit` 一律是 `request`，即**按次**计价，不是按 token）：
+
+  | `model_tier` | `unit_price` | `min_charge` | 厂商描述 |
+  |---|---|---|---|
+  | `lite` | 0.5 | 0.5 | 轻量模型 0.5魔粒/次 |
+  | `standard` | 1 | 1 | 主流模型 1魔粒/次 |
+  | `ultra` | 2 | 1 | 旗舰模型 2魔粒/次 |
+  | `discount` | 0.2 | 0.2 | 折扣模型 0.2魔粒/次 |
+
+  `min_charge` 是按量计价的**下限**，只在计量结果低于它时才兜底；`ultra` 的 `min_charge`(1) 低于
+  `unit_price`(2)，所以旗舰调用永远按 2 扣，下限不参与。厂商的计价表**只按档位、不按模型**——
+  没有任何接口能回答「这个模型属于哪档」：账本行只有 `model_tier`，**不带模型 id**，`/models`、
+  模型详情页、`/.well-known/openapi.json` 也都没有。所以模型→档位的映射只能**实测**：拿某个模型
+  真发一次请求，再读账本那一行的 `model_tier`。这是插件自己维护的表（2026-11-22 扫五个账号得出），
+  插件按请求体里的 `model` 取档位给每次调用定价，**未知模型一律按最高档 2 计**——宁可高估消耗，
+  不可高估余额。
 - **余额耗尽即冷却**：厂商真正回答「魔粒不足」有两种面孔——推理网关是 **HTTP 429 +
   `{"error":{"message":"insufficient balance"}}`**（2026-11-22 实测，五个零余额账号全部如此），
   openapi 面是 **403 + `code=QuotaLimitExceed`**（官方 SDK 的状态映射）；402 也一并当耗尽。
@@ -152,7 +165,8 @@ bunx tsc --noEmit
 30 分钟缓存与估算、**按档位计价**（lite 0.5 / standard 1 / ultra 2 / discount 0.2 / 未知按 2）、
 **厂商自己的计价表优先**、**请求体里的
 model 决定这次调用价**、**账本 50 行分页**、**耗尽冷却一天**（429 insufficient balance /
-403 QuotaLimitExceed）、**403 模型无权限不冷却**、**冷却期间不读厂商**。运行时不访问外网（`nonet.ts` 拦截）。入口与测试都是 TypeScript，Bun 直接加载。
+403 QuotaLimitExceed）、**403 模型无权限不冷却**、**冷却期间不读厂商**、**改名的模型 id 仍按原档计价**
+（`zai-org/GLM-5.2` 与旧的 `ZhipuAI/GLM-5.2` 同为旗舰）。运行时不访问外网（`nonet.ts` 拦截）。入口与测试都是 TypeScript，Bun 直接加载。
 
 插件契约：`index.ts` 默认导出 `ModelScopeAuthPlugin`（`config` / `auth` / `provider` 三个钩子），
 测试用的内部函数放在导出的 `_internal` **对象**里——magpie 把每个导出的*函数*当插件，对象不会
