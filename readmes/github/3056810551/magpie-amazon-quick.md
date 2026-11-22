@@ -62,6 +62,8 @@ https://github.com/3056810551/magpie-amazon-quick
 
 所有请求默认以 `incognito: true` 发送，不会在你的 Amazon Quick 桌面端历史会话列表中留下 API 对话记录。
 
+> **Claude Code 上下文显示 27.2 万（272k）而非 1M 说明**：本插件默认声明 1M 上下文并兼容 `[1m]` 模型后缀；如果通过 Magpie 接入 Claude Code 后上下文上限仍显示 `27.2万`，是因为 Magpie 默认向 `~/.claude/settings.json` 写入了 `"autoCompactWindow": 272000`。将该字段改为 `1000000`（或删除后重载窗口并新开对话），或在 Claude Code 中运行 `/autocompact` 即可恢复 1M 显示；若重新在 Magpie 中应用配置被写回，可额外设置系统环境变量 `CLAUDE_CODE_AUTO_COMPACT_WINDOW=1000000`。
+
 ## 用量与配额
 
 插件通过 `profile/usage` 接口读取当前账号的订阅计划与配额窗口；在 **Free Trial**（免费试用，`QUICK_LITE_FREE_TRIAL`）计划下实测包含以下配额窗口：
@@ -146,6 +148,8 @@ https://github.com/3056810551/magpie-amazon-quick
 | `advanced` | Amazon Quick Advanced (Deep Reasoning, when enabled in account settings) | `low`, `medium`, `high`, `max`        |
 
 All model requests run with `incognito: true` so API turns do not clutter your Amazon Quick Desktop sidebar history.
+
+> **Claude Code showing `272k` instead of `1M` context**: This plugin declares a 1M context window and strips `[1m]` model suffixes automatically. If Claude Code via Magpie still displays a `272k` ceiling, Magpie writes `"autoCompactWindow": 272000` to `~/.claude/settings.json` by default. Change it to `1000000` (or remove it, then reload the window and start a new chat), or run `/autocompact` inside Claude Code; if Magpie re-writes it on re-apply, set the environment variable `CLAUDE_CODE_AUTO_COMPACT_WINDOW=1000000`.
 
 ## Usage & Quotas
 
