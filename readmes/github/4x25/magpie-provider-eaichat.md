@@ -39,13 +39,13 @@ magpie plugin login eaichat
 | `glm-5.3-oc` | GLM-5.3 | 1,000,000 | 131,072 | `low` `high` `max` | text |
 | `qwen-3.8-flash` | Qwen-3.8-Flash | 1,000,000 | 131,072 | `none` `low` `medium` `xhigh` | text, image, video |
 
-请求使用 `model`，展示名使用 `title`。登录前（config 钩子还没有登录态）或上游清单拉取失败时，使用 `src/constants.ts` 的内置回退清单，内容与上表一致。上游 `api` 字段里的 `openai-completions` / `anthropic-messages` 决定模型出现在哪种协议下；字段缺失时视为两种都可用。
+请求使用 `model`，展示名使用 `title`。模型列表只包含上游声明过的模型：`config` 钩子不声明模型，`provider.models` 在登录后按上游清单生成，未登录或拉取失败时返回空表。上游 `api` 字段里的 `openai-completions` / `anthropic-messages` 决定模型出现在哪种协议下；字段缺失时视为两种都可用。
 
 magpie 根据 `limit.context` 自动显示灰色 `1M` / `1.0M` 徽标，并把 `variants` 显示为思考档位。更新插件或在供应商页面点击「重新获取模型」时，会重新请求上游清单。
 
 ### 元数据来源
 
-上游清单不返回上下文、最大输出、多模态和思考档位，这部分仍来自 [models.dev](https://models.dev/api.json)。`src/constants.ts` 维护「已知上游模型 ID → models.dev 规范模型 ID」的映射，同时充当登录前的回退清单；`src/model-metadata.ts` 由脚本生成：
+上游清单不返回上下文、最大输出、多模态和思考档位，这部分仍来自 [models.dev](https://models.dev/api.json)。`src/constants.ts` 维护「已知上游模型 ID → models.dev 规范模型 ID」的映射，只用于补充元数据；`src/model-metadata.ts` 由脚本生成：
 
 ```sh
 npm run update:models
