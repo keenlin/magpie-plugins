@@ -24,6 +24,9 @@ Sign-in is browser OAuth with PKCE and a loopback callback. The authorization UR
 - Image inputs: small inline images are attached to the message; larger inline images can use Quick's cloud upload and DLP flow, within per-image and per-turn limits.
 - Thread reuse for append-only conversations, with separation by account, chat session, route, system prompt, and tool schemas.
 - Quick entitlement usage on Magpie's account and Usage screens.
+- Reused threads carry a short tool reminder instead of repeating schemas. Multi-step token usage reports the latest prompt size (including cache reads/writes) and accumulates generated tokens.
+- Compact adapter instructions leave more room for your conversation. Frame fitting reduces older history before dropping the latest question; user instructions are not paraphrased (oversized system prompts still have the documented frame limits).
+- A system prompt longer than 24 KB is compressed to fit; that adapter limit is not reported as conversation truncation.
 - Optional loopback-only OpenAI-compatible HTTP server for clients outside Magpie.
 
 ## Install and authorize
@@ -88,4 +91,4 @@ Tests use synthetic accounts and local fake services. They do not replace accept
 
 ## Credits
 
-This **0.5.5** build integrates message rendering, tool parsing, image upload, thread-cache helpers, and entitlement usage from [httpdone/magpie-aws-quick](https://github.com/httpdone/magpie-aws-quick), published as [npm magpie-aws-quick 0.1.3](https://www.npmjs.com/package/magpie-aws-quick). It retains this repository's browser-only OAuth and Gateway implementation. The npm package is a separate distribution; use this repository or its Release asset to install this build. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for the retained MIT license notice.
+This **0.5.8** build integrates message rendering, tool parsing, image upload, thread-cache helpers, entitlement usage and the 0.1.4 context/usage fixes from [httpdone/magpie-aws-quick](https://github.com/httpdone/magpie-aws-quick) through commit `adf163c`. It retains this repository's browser-only OAuth and Gateway implementation. The [npm package](https://www.npmjs.com/package/magpie-aws-quick) is a separate distribution; use this repository or its Release asset to install this build. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for the retained MIT license notice.
