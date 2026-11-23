@@ -24,9 +24,10 @@
 
 手机端走 `gateway` 通道：登录 / 加号账号池由本地 Python 网关维护，插件用「免登录」占位账号出模型
 （**不要**点 QQ / 微信登录 —— 手机壳只给旧包名打过补丁，final 版会卡在打不开浏览器）。
-简要：① Termux 跑参考仓库 `yy158358/Marvis-proxy-public` 的 `sh run.sh start` 并加号登录；
+简要：① Termux 先 `pkg install python curl -y`，跑参考仓库 `yy158358/Marvis-proxy-public` 的 `sh run.sh start` 并加号登录；
 ② 插件目录通过 magpie 控制后台 `127.0.0.1:3430` → 插件 → 导入；
-③ 复制 `gateway.example.json` 到 `~/.magpie-marvis-native/gateway.json` 开启网关模式；
+③ 复制 `plugin/gateway.example.json` 到 `~/.magpie-marvis-native/gateway.json` 开启网关模式
+   （用 phone-kit 附件时直接 `sh phone-setup.sh` 会自动写这份配置）；
 ④ 加账号选「本地网关（手机推荐，免登录）」→ `magpie provider test`。
 完整步骤见 [README-FINAL 第四节](./README-FINAL.md)。
 
