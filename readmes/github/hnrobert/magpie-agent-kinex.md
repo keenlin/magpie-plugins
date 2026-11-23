@@ -85,26 +85,23 @@ magpie kinex default
 
 ### Icon
 
-`magpie.icon` in `package.json` is a data URI of `assets/kinex-logo.svg` rasterized to a 192×192 PNG. The SVG holds the two shapes of Kinex's logo with their paths unchanged, on a tile of Kinex's own brand purple, so that it reads on magpie's light and dark themes alike. After changing the SVG, generate it again:
-
-```bash
-rsvg-convert -w 192 -h 192 assets/kinex-logo.svg -o /tmp/kinex.png
-base64 -i /tmp/kinex.png | tr -d '\n'
-```
+`assets/kinex-logo.svg` is the plugin's one picture. It is not read as a file of the package: magpie takes a picture only as an `https` address or as data embedded in `package.json`, because a card in Discover is drawn before anything of the plugin is on disk. So `magpie.icon` in `package.json` gives the file's address on GitHub, for the card in Discover and the row in Installed, and the `agent` export gives the same address as its `icon`, for Kinex's row on the Agents page. magpie fetches the picture once, through usemagpie.ai's icon proxy, and keeps it; a card or a row shows magpie's generic one only until it arrives. The SVG holds the two shapes of Kinex's logo with their paths unchanged, on a tile of Kinex's own brand purple, so that it reads on magpie's light and dark themes alike. A test checks that both addresses name this repository's file.
 
 ### How far it was verified
 
-Done on macOS with magpie 0.1.4535:
+Done on macOS with magpie 0.1.4535 (the git install and the picture with 0.1.4727):
 
 - The real magpie command line loading this plugin: adding it, picking a model, disconnecting. After disconnecting, both files are byte-for-byte what they were before. When the provider of the picked model is removed, magpie moves Kinex to an equivalent model by itself.
 - The same through a git install, which is what installing from the Discover page does: the plugin added from a git repository of this code, a local one on the same route as `github:owner/repo`; Kinex's row loaded, a model was picked, and both files were put back byte-for-byte when the plugin was removed.
+- The picture, as the window's server gives it to the pages. The row in Installed and Kinex's row on the Agents page have it about five seconds after the plugin is first loaded, and a later start reads it from disk. With `icon` left out the Agents row is `generic`, and with a relative file path in `magpie.icon` the Installed row has no picture at all.
 - Pi 1.2.0 reading back the real files magpie wrote: no error, and a new session starts on the picked model.
 - An end-to-end request: the Pi 1.2.0 client sending a request the way Kinex does, through a real magpie gateway (started separately in the throwaway environment) to a fake vendor. Chat Completions, Responses and Messages all went through, the reasoning parameters mapped as expected, and magpie's usage ledger recorded it under Kinex with the session.
 
 Not verified:
 
 - **The real Kinex was never run.** The claims above about how Kinex reads these files rest on its source and on the Pi it bundles, not on running Kinex.
-- magpie's graphical interface; only the command line was verified.
+- The window itself: the pictures were checked through what magpie's server gives the page, not by looking at the window.
+- Discover's card with the address: it was checked with a list of one entry served on this computer. The live list has the address only once this `package.json` is on `main`.
 - Windows and Linux, and a real robot workspace.
 - An install from npm, and from GitHub itself: the package is not on npm yet, and the repository was cloned locally. The npm tarball was only packed and its contents listed.
 
