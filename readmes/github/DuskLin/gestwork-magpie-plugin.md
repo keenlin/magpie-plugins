@@ -14,7 +14,7 @@ magpie plugin add /path/to/gestwork-magpie-plugin
 magpie plugin add github:DuskLin/gestwork-magpie-plugin
 ```
 
-安装后打开 **Magpie → Agent**，找到 **GestaWorks**。如果 Keel 的 `keel` CLI 在 PATH 中，或 Magpie 的连接文件已经存在，该行会显示为已检测。
+安装后打开 **Magpie → Agent**，找到 **GestaWorks**。插件通过桌面 App 的 `~/.keel` 数据目录检测安装，不需要安装或使用 `keel` CLI。
 
 ## 使用
 
@@ -97,7 +97,7 @@ magpie plugin options gestwork-magpie-plugin '{
 
 **Agent 行显示 not detected**
 
-确保 Keel 已安装，并且 `keel` 命令在 Magpie 的 PATH 中。该行仍可通过 `magpie gestaworks` 操作；连接文件出现后也会显示为已检测。
+确认桌面 App 已至少启动一次，并存在 `~/.keel` 数据目录。插件不依赖 Keel CLI。
 
 **模型已选择，但 Keel 没有变化**
 
