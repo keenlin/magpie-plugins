@@ -20,12 +20,15 @@
 出票与配置资产放**稳定目录**（用户环境变量 `MARVIS_NATIVE_DIR`，建议
 `C:\Users\<你的用户名>\.magpie-marvis-native`），在插件目录之外，`magpie plugin update` 清不掉 —— 跨更新免疫；详见 README-FINAL 第二节。
 
-## 手机怎么用（Termux / PRoot）
+## 手机怎么用（Termux / PRoot / magpie 安卓壳）
 
-手机不装本插件的原生组件，只跑一个本地 OpenAI 网关：装 Python 3.8+，用参考仓库
-`yy158358/Marvis-proxy-public` 的 `sh run.sh start` 起 `127.0.0.1:8088`，加号登录；
-magpie 侧默认走 `gateway` 连这个网关即可。完整步骤见
-[README-FINAL 第四节](./README-FINAL.md)。
+手机端走 `gateway` 通道：登录 / 加号账号池由本地 Python 网关维护，插件用「免登录」占位账号出模型
+（**不要**点 QQ / 微信登录 —— 手机壳只给旧包名打过补丁，final 版会卡在打不开浏览器）。
+简要：① Termux 跑参考仓库 `yy158358/Marvis-proxy-public` 的 `sh run.sh start` 并加号登录；
+② 插件目录通过 magpie 控制后台 `127.0.0.1:3430` → 插件 → 导入；
+③ 复制 `gateway.example.json` 到 `~/.magpie-marvis-native/gateway.json` 开启网关模式；
+④ 加账号选「本地网关（手机推荐，免登录）」→ `magpie provider test`。
+完整步骤见 [README-FINAL 第四节](./README-FINAL.md)。
 
 ## 历史
 
