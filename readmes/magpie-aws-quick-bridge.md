@@ -8,7 +8,7 @@
   <a href="https://www.npmjs.com/package/magpie-aws-quick-bridge">npm</a>
 </p>
 
-这是我做的一个小工具：把 **Amazon Quick（QuickWork）** 账号接到 Claude Code、Codex、OpenCode 这些编程 agent 上用。
+这是我做的一个小工具：把 **AWS Quick（Amazon Quick / QuickWork）** 账号接到 Claude Code、Codex、OpenCode 这些编程 agent 上用。
 
 **同一个包，[Magpie](https://usemagpie.ai) 和 [CC Switch](https://github.com/farion1231/cc-switch) 都支持：**
 
