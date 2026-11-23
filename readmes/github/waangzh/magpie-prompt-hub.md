@@ -1,6 +1,6 @@
 # Magpie Prompt Hub
 
-**Magpie 的本地提示词仓库。** 在侧栏集中保存常用提示词，随时查找并复制到其他应用。
+**Magpie 的本地 PromptHub。** 在侧栏集中保存常用提示词，随时查找并复制到其他应用。
 
 ## 安装与加载
 
@@ -10,11 +10,11 @@
 magpie plugin add .
 ```
 
-在 Magpie 侧栏「插件」分组打开「提示词仓库」（Prompt Hub）。
+在 Magpie 侧栏「插件」分组打开「PromptHub」。
 
 ## 使用方法
 
-![提示词仓库主界面，左侧是分类和标签，中间是提示词列表，右侧显示完整正文](./assets/screenshots/library.png)
+![PromptHub 主界面，左侧是分类和标签，中间是提示词列表，右侧显示完整正文](./assets/screenshots/library.png)
 
 ### 新建与编辑
 
