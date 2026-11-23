@@ -183,6 +183,23 @@ expiry. It reads `getAvailableEntitlementUnits` from the tenant data plane
 with the account's own token — the same numbers as the desktop app's usage
 widget, which also assumes the allowance resets on the 1st of next month.
 
+### Options
+
+A few plugin options tune request handling (`magpie plugin options aws-quick '{…}'`):
+
+- `headerWaitMs` (default `10000`): streaming requests return response headers
+  after Quick's first output **or** this long, whichever comes first — Quick
+  can sit silent while its own tools run, and gateways cap how long they wait
+  for headers. `0` waits for the first output as before.
+- `idleTimeoutMs` (default `300000`): abort a turn that shows no Quick progress
+  (real events; keepalives don't count) for this long — surfaces as a 503
+  `timeout` error, and Quick gets its own `stop_generation` frame so the turn
+  doesn't keep running server-side. Client aborts are handled the same way.
+  `0` disables the watchdog.
+- `showQuickTools` (default `true`): surface Quick's built-in tool activity
+  (`tool_start`) as `[Quick: <name>]` reasoning lines so long agentic turns
+  don't look dead; `false` hides them.
+
 ## Known limitations
 
 - **Tool calls are a text-convention simulation**: Quick's agent owns a
@@ -198,7 +215,10 @@ widget, which also assumes the allowance resets on the 1st of next month.
   model honoring the convention — verified stable under
   `tool_choice:'required'` for smart/advanced; occasionally the model answers
   directly with its own tools (e.g. web search) instead, which shows up as a
-  plain-text reply. Quick's built-in tool results are never mapped to OpenAI
+  plain-text reply. If the model instead invokes a client-declared tool
+  through Quick's own native tool channel, the plugin recognizes the call and
+  emits it as a normal `tool_calls` item, stopping the turn before Quick can
+  rewrite it as text. Quick's built-in tool results are never mapped to OpenAI
   `tool_calls` (that's its internal process).
 - **Images: small ones inline, larger ones uploaded.** Inline images (`data:`
   URLs, Anthropic base64 blocks, images inside tool results) that fit the
