@@ -46,7 +46,11 @@ Keel 侧使用：
 - `providers.getModels`：读取实时模型目录。
 - `providers.getModelConfig` / `providers.setModelConfig`：启用 Provider 并设置默认模型。
 
-插件不会直接读写 Keel 的 SQLite 数据库。
+插件通过 Keel 的本地 API 注册 Provider 和设置模型，并在获得授权后直接事务更新 Keel 的模型存档，补齐显示名、上下文窗口、输出上限、视觉/推理能力和价格。不会修改 Keel 源码。
+
+模型存档写入前会在同目录创建 `agents.db.magpie-backup-<时间>` 一致性备份。已有注册表条目会合并保留，不会替换其他 Provider 的配置。
+
+**首次同步或模型元数据更新后需要重启 GestaWorks。** Keel 只在启动时读取模型注册表存档；不重启时，运行中进程可能仍显示旧名称和旧上下文。
 
 ### 断开恢复
 
