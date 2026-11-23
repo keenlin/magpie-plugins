@@ -57,6 +57,8 @@ What the plugin does:
 5. **Thread reuse (on by default)**: exact continuation tracking over an
    incremental hash chain â€” see [Thread reuse](#thread-reuse) below.
 
+Device ids: the desktop app always sends its profile's `device_id` as `outpostId`, so direct sessions send a stable per-account one too instead of an empty value. Credential Manager sign-ins reuse the desktop profile's own `device_id` (read-only); OAuth accounts get a UUID generated once at sign-in and stored on the account record, kept across token refreshes and re-logins. The same id goes into oversized-image delivery. Accounts never share an id, and an id is never rotated. `stableDeviceId: false` goes back to the empty value. The local-outpost backend uses whatever id Quick's own agent reports; the agent inherits `QUICKWORK_BASE` / `QUICKWORK_ROOT` from the environment.
+
 ### Thread reuse
 
 Quick keeps conversation history server-side per `thread_id`, but OpenAI
@@ -199,6 +201,9 @@ A few plugin options tune request handling (`magpie plugin options aws-quick '{â
 - `showQuickTools` (default `true`): surface Quick's built-in tool activity
   (`tool_start`) as `[Quick: <name>]` reasoning lines so long agentic turns
   don't look dead; `false` hides them.
+- `stableDeviceId` (default `true`): direct sessions send a stable
+  per-account device id as `outpostId` (see Device ids above); `false` sends
+  an empty value.
 
 ## Known limitations
 
@@ -240,8 +245,9 @@ A few plugin options tune request handling (`magpie plugin options aws-quick '{â
   `quick.aws.com/sn` flow (`social` provider). Enterprise-IdP tenants whose
   issuer is not the Amazon social IdP may not complete this flow â€” use the
   local-credentials method on a machine with the app installed instead. The
-  OAuth path also runs with an empty `outpostId` (accepted server-side), so
-  any future feature the server ties to a real device id won't apply.
+  OAuth path sends a stable generated device id but runs no local agent, so
+  any server feature that needs a connected device (local files/apps) won't
+  apply.
 - **Message size**: the whole `user_message` frame is hard-capped at 64 KB
   server-side (`text` + `system_prompt` share it). Oversized system prompts /
   tool schemas / history are compacted automatically (schema de-annotation,
