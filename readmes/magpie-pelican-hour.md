@@ -16,7 +16,7 @@ Enable the plugin and keep Magpie running on an awake computer. Checks make real
 
 ## Language and help
 
-The dashboard follows your system language on first use. The selector at the top right offers Simplified Chinese, Traditional Chinese, English, Japanese and German. Choose **System language** to return to automatic selection. Unsupported languages fall back to Simplified Chinese. The dashboard title and user guide follow this selection. Magpie uses its own interface language for the sidebar and plugin details. Account names, prompts, model replies and existing artwork stay in their original language.
+The dashboard follows your system language on first use. The selector at the top right offers Simplified Chinese, Traditional Chinese, English, Japanese and German. Choose **System language** to return to automatic selection. Unsupported languages fall back to Simplified Chinese. The dashboard title and user guide follow this selection. Magpie uses its own interface language for the sidebar and plugin details. The gallery shows localized artwork titles and a translation of the test prompt. Expand the prompt to read the exact text sent, or open a run to see the original title. An artwork without a title translation gets a dated display label. Account names, model replies and artwork files retain their original content.
 
 ## Scheduling and quiet hours
 
