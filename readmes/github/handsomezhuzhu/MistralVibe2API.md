@@ -220,6 +220,45 @@ magpie provider test mistral-vibe
 | `userAgent` | 覆盖伪装的 User-Agent |
 | `extraHeaders` | 额外上游头，如 `{"origin": "https://chat.mistral.ai"}` |
 | `usageUrl` | 可选用量查询地址，返回 `{plan, used, limit}`；Mistral 没有公开的按 key 用量 API，默认不查 |
+| `keyPreference` | 路由偏好：`"vibe"`（默认，Vibe key 优先）/ `"api"`（API key 优先）/ `"quota"`（按各自额度余额均衡） |
+
+## Key 类型识别与路由策略
+
+Mistral 有两种 key（同一账户下两条额度池）：**Vibe key**（`chat.mistral.ai/code/extensions` 创建，whoami 报 `plan_type: CHAT`，用量记 **Vibe 池**）和 **API key**（Console 创建，`plan_type: API`，用量记 **API 池**）。计量归属由 key 类型决定，客户端指纹改不了（已实测）。
+
+插件因此：
+
+1. **登录时识别并标注**：`authorize` 调 whoami 判定类型，账号显示为 `vibe · …1f01` / `api · …1LwX`，类型存入 `metadata.keyType`；key 被拒时明确报错，whoami 不可达时按 `unknown` 接纳（不影响使用）
+2. **已有 key 自动补识别**：在插件升级前登录的账号没有 `metadata.keyType`，loader（首次使用）和 usage（额度读取）会调一次 whoami 补判，并写回账号——**每个 key 只问一次 whoami，不是每次读取都问**。写回用快照比对防竞态（识别期间账号被登出/刷新则放弃写入），写入失败不影响当次读取
+2. **usage 报该 key 真正消耗的额度池**：Vibe key 报 Vibe 池，API key 报 API 池；另一个池作为 `aside` 窗口展示（卡片可见、路由不读）
+3. **按 `keyPreference` 决定谁接流量**：
+   - `vibe`（默认）：Vibe key 的池计数，API key 全 aside（standby）——流量优先走 Vibe 池，**Vibe 池耗尽后自动故障切换到 API key**（窗口 renewal 后自动回来）
+   - `api`：反向
+   - `quota`：两种 key 各自的池都计数，路由按剩余额度均衡
+
+只登录了一种 key 时偏好自动失效（唯一的账号照常服务），不会有"偏好导致无账号可用"的问题。
+
+### 偏好怎么在 magpie 路由里生效（重要）
+
+**这不是插件注册的自定义路由策略，而是 usage 窗口通道**：非偏好类型的 key 所有窗口都标 `aside`（magpie 文档：aside 窗口"展示但路由永不读"），于是内置策略把它当作"用量未知"的座位。源码验证过自定义策略拿到的 seats 里没有 key 类型（只有 `key/account/known/used/soon/...`），所以按 key 类型偏好只能走这个通道。
+
+生效前提：**provider / 分组 / 网关 key 的路由必须是会读窗口的策略**——`smart`（默认）、`usage`、`pace` 或 `drain`。若被设成 `order` 或 `rotate`，窗口不被读取，偏好退化成账号列表顺序：
+
+```bash
+magpie gateway-key routing <key-id>   # 查看/设置网关 key 的路由
+magpie group list                     # 查看含 mistral-vibe 模型的分组路由
+```
+
+默认 `smart` 下的行为（阈值来自 magpie 源码 `LowShare=90` / `SpentShare=98`）：
+
+| 偏好池用量 | 行为 |
+| --- | --- |
+| < 90% | 偏好类型的 key 接流量 |
+| 90%–98% | 自动切到 standby key（留余量） |
+| ≥ 98% | standby 服务 |
+| 月初重置 | 自动切回偏好类型 |
+
+想"榨干偏好池再切换"用 `drain` 路由（约 98% 才换）。
 
 模型列表：插件启动时带一份静态目录，严格对齐 Vibe 表面（`mistral-vibe-cli-latest` 等 CLI 线报名 + 目录里的 6 个模型），登录后先向上游 `/v1/model-catalog?surface=vibe-code`（CLI 同款目录）合并账号实际可用的模型，失败再退 `/v1/models`，再失败用静态目录。
 
@@ -282,25 +321,19 @@ export OPENAI_API_KEY=任意占位符
 
 ```bash
 node --test                              # 全部用例（live 无 key 自动跳过）
-MISTRAL_API_KEY=mstrl_… node --test test/live.test.mjs   # 线上回归（真调 Mistral）
+MISTRAL_API_KEY=mstrl_… node --test test/live.test.mjs   # 线上回归（真调 Mistral，本地手动跑）
 ```
 
 覆盖内容：
 
 - **单元/契约**：头改写、Anthropic ⇄ OpenAI 双向转换（tool_use / thinking / 缓存字段）、SSE 编解码、计费端点与成本公式（CLI 同款）、包与插件契约（`package.json` 字段、发现关键词、防 key 泄漏扫描）、目录与价格表一致性
+- **全链路模拟**（`test/integration.test.mjs`）：一个 mock Mistral 上跑完登录（含 key 类型识别）→ 供应商声明 → 模型目录 → loader fetch（普通/流式/工具调用，校验 Vibe 指纹）→ usage 读数，无需 key 和网络
 - **端到端**（mock 上游）：流式/非流式透传、错误透传、模型别名、`/usage` 统计聚合
-- **线上回归**（`test/live.test.mjs`，需 key）：模型列表、Vibe 表面模型名、工具调用、流式、**自动缓存命中**、billing 双池、插件 usage 钩子读真实数据、客户端指纹防漂移
-
-> 模型可用性**随 key 的套餐和调用方区域而变**，而且是**按 key 门控**的：Vibe 目录对账户内所有 key 都列出全部 6 个模型，但免费 Vibe key 调完整版会 403（`tier_not_allowed`），API key 调 `*-vibe-free` 同样 403。所以 live 测试会**逐个探测**候选模型（发 1-token 请求），用第一个真能用的；挑到的模型没有公开标价或不上报缓存时就带原因 skip 而不是失败——三种 key（付费 Vibe / 免费 Vibe / API）都能全绿。
+- **线上回归**（`test/live.test.mjs`，需 key）：模型列表、Vibe 表面模型名、工具调用、流式、自动缓存命中、billing 双池、插件 usage 钩子读真实数据、客户端指纹防漂移
 
 ### CI（GitHub Actions）
 
-`.github/workflows/ci.yml` 两个 job：
-
-- **test**：Node 18/20/22/24 × Ubuntu/Windows/macOS 共 12 个组合跑全量用例 + `npm pack --dry-run` 打包校验。push 到 master/main 和 PR 自动触发
-- **live**：仅手动触发（Actions → CI → Run workflow），key 从 repository secret `MISTRAL_API_KEY` 注入，**永不进代码**。改完代码后一键验证整条链路（包括 Mistral 侧有没有变动）
-
-配置方法：仓库 Settings → Secrets and variables → Actions → New repository secret，名 `MISTRAL_API_KEY`，值填 Vibe key。
+`.github/workflows/ci.yml`：Node 18/20/22/24 × Ubuntu/Windows/macOS 共 12 个组合跑全量用例 + `npm pack --dry-run` 打包校验，push 到 master/main 和 PR 自动触发。**CI 只跑模拟测试**（不配 key、不花额度、不受 key 套餐差异影响）；线上回归留在本地手动跑。
 
 ## 风险与限制
 
