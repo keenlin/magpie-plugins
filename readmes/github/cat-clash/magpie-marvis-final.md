@@ -1,4 +1,4 @@
-# 腾讯 Marvis · magpie 供应商插件（final 0.6.0）
+# 腾讯 Marvis · magpie 供应商插件（final 0.7.0）
 
 > **⭐ 使用文档请读 [`README-FINAL.md`](./README-FINAL.md)。**
 >
@@ -6,7 +6,7 @@
 > Claude Sonnet/Opus 4.6、GPT-5.4、Hy3、HY-Vision 2.0 接进 magpie / OpenCode，
 > QQ / 微信登录，不用粘贴 key。**PC 与手机通用（手机通过本地 OpenAI 网关）。**
 
-## 传输通道（0.6.0）
+## 传输通道（0.7.0）
 
 | 模式 | 说明 | 适用 |
 |---|---|---|
@@ -20,10 +20,24 @@
 出票与配置资产放**稳定目录**（用户环境变量 `MARVIS_NATIVE_DIR`，建议
 `C:\Users\<你的用户名>\.magpie-marvis-native`），在插件目录之外，`magpie plugin update` 清不掉 —— 跨更新免疫；详见 README-FINAL 第二节。
 
+**流式透传（0.7.0 新增）**：`gateway`（PC AG-UI WS）与 `openclaw`（手机会话域 WS）两条通道改为流式 ——
+网关侧 `TEXT_MESSAGE_CONTENT` / openclaw 侧 `event:chat` 增量实时转成 OpenAI `chat.completion.chunk` SSE，
+首字延迟从「整轮结束」降到秒级；**非流式行为不变**。flatten 改进：单条 user 消息原样直发，
+system 独立置顶保留；`agent.run` 的 requestId 已唯一化。
+
+**风控与节奏（0.7.0）**：出站补全请求受请求节奏闸 pacing 约束——
+`MARVIS_MIN_REQUEST_INTERVAL_MS`（默认 `800`）控制最小间隔，`MARVIS_REQUEST_JITTER_MS`（默认 `400`）叠加随机抖动；
+熔断器退避改为指数退避并持久化到 `<稳定资产目录>/breaker-state.json`（重启不丢）。
+**随机 uskey 兜底默认关闭（0.7.0 行为变更）**：没有 `native/`、也没有 `MARVIS_USKEY_URL` 时直接 fail-fast
+报可操作错误，不再静默放行随机票（线上必 `4100404`）；显式设 `MARVIS_ALLOW_RANDOM_USKEY=1` 可找回旧兜底（仅开发排查用）。
+主动续期：token 剩余时效不足 `MARVIS_REFRESH_LEAD_MS`（默认 `600000`，clamp 50% TTL）时提前续期，
+微信 2h token 不再周期性掉线。完整环境变量见 [README-FINAL](./README-FINAL.md)。
+
 ## 手机怎么用（Termux / PRoot / magpie 安卓壳）
 
-手机端走 `gateway` 通道：登录 / 加号账号池由本地 Python 网关维护，插件用「免登录」占位账号出模型
-（**不要**点 QQ / 微信登录 —— 手机壳只给旧包名打过补丁，final 版会卡在打不开浏览器）。
+手机端走 `gateway` 通道（**0.7.0 起也可以直接点 QQ / 微信登录**——插件自带本地粘贴页 `http://127.0.0.1:4618/`，
+不再依赖旧包名补丁，详见 README-FINAL 第四节；gateway 仍是推荐路径，账号池在网关侧维护）：登录 / 加号账号池由本地 Python 网关维护，插件用「免登录」占位账号出模型
+（占位账号现已排在真登录之后）。
 简要：① Termux 先 `pkg install python curl -y`，跑参考仓库 `yy158358/Marvis-proxy-public` 的 `sh run.sh start` 并加号登录；
 ② 插件目录通过 magpie 控制后台 `127.0.0.1:3430` → 插件 → 导入；
 ③ 复制 `plugin/gateway.example.json` 到 `~/.magpie-marvis-native/gateway.json` 开启网关模式
@@ -38,6 +52,8 @@
 - 本插件经历 0.2.x（现签修复）→ 0.3.x（openclaw WS 传输）→ 0.4.x（断网重连抓包、
   熔断器、中文首行护栏、AK/SK 休眠）→ 0.5.x（精简，HTTP 直连恢复后回归主链路）
   → 0.6.x（正名为纯 magpie 插件，新增本地网关传输，手机可通过 Termux / PRoot 使用）
+  → 0.7.x（流式透传、熔断指数退避持久化、请求节奏闸、主动续期、随机 uskey 默认 fail-fast、
+  手机端可直接 QQ / 微信登录——自带本地粘贴页，不再依赖旧包名补丁）
   的完整演进，修复史见 [CHANGELOG](./CHANGELOG.md)。
 
 ## 帧协议参考（openclaw WS 模式）
