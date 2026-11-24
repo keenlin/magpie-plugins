@@ -1,79 +1,92 @@
 # 补丁更新（`magpie-patch-updater`）
 
-面向 Magpie 的原生本地页面插件，用于在**保留自定义补丁**的前提下安全跟踪、预演校验、原子更新并一键回滚本地托管插件（内置 `@magpie-community/opencode-agy-cli-auth` 的热补丁模块）。
+用于在**保留自定义补丁**的前提下更新 Magpie 插件。
+
+Magpie 会定期自动更新 `@latest` 插件并整包覆盖 `node_modules/`，直接修改插件源码会在下次更新时丢失。本插件将目标插件独立托管到本地目录，每次同步上游新版时自动重放补丁并通过校验后再切换生效。
 
 ---
 
-## 快速安装
+## 技术概述
 
-在支持 `github:` 插件源的 Magpie（macOS / Windows / Linux）中直接安装：
+- **作用边界**：仅针对 Magpie 的 JS 插件包（`@magpie-community/*`），不修改 Magpie 主程序二进制。底层托管与更新流水线支持任意多目标插件；当前内置 `@magpie-community/opencode-agy-cli-auth`（`agy-cli`）的 3 个补丁，其他插件可通过新增补丁模块接入。
+- **本地目录托管**：目标插件解包存放在 `~/.config/magpie/patched-plugins/<id>/`，以本地路径方式注册到 Magpie。Magpie 不会覆盖本地路径插件，目录切换后会自动触发平滑热重载；账号凭据按 Provider ID 保存在 `plugin-auth.json` 中，切换插件来源不会影响已有登录态。
+- **隔离更新与回滚流水线**：
+  1. **拉取校验**：从 `magpie-community/plugins`（`dist/index.json`）获取最新版本并校验 tarball 的 SHA-512。
+  2. **暂存打补丁**：在受管目录之外的 `.staging` 临时目录解包，先运行 `detectUpstreamed`（若上游已原生修复则自动跳过并提示关闭），再按锚点规则应用补丁。
+  3. **校验门禁**：依次执行 JS 语法检查、各补丁 `verify` 断言及隔离环境下的入口模块加载检查；任一环节失败即中止，当前生效目录保持不变。
+  4. **原子切换**：将旧版本归档至 `.snapshots`（保留最近 3 个快照），再原子替换为新版本，支持一键回滚。
+
+---
+
+## 使用方法
+
+### 1. 安装插件
 
 ```bash
 magpie plugin add github:l1nxuan-du/magpie-patch-updater
 ```
 
-或在客户端 **Plugins › Discover** 中搜索 `magpie-patch-updater` 一键安装。安装后在左侧边栏 **Plugins › 补丁更新** 打开管理页面。
+安装后可在 Magpie 左侧边栏 **Plugins › 补丁更新** 打开管理页。
 
-如需修改本地页面服务监听端口（默认 `18910`）：
+### 2. 接管并切换目标插件（以 `agy-cli` 为例）
 
-```bash
-magpie plugin options github:l1nxuan-du/magpie-patch-updater '{"port": 18910}'
-```
+1. 打开 **补丁更新** 页面，点击右上角 **「接管认证插件」** 生成本地补丁副本，并按需开关页面中的补丁项。
+2. 在终端停用原 `@latest` 插件，改用本地托管目录：
 
----
-
-## 1. 架构与安全设计
-
-### 1.1 本地托管目标插件架构
-- **不直接修改 `node_modules`，不做启动期竞态猴子补丁**：将目标插件解包并托管到独立本地目录 `~/.config/magpie/patched-plugins/<id>/`，通过 `magpie plugin add <本地绝对路径>` 接入 Magpie，免疫 `@latest` 自动更新覆盖，同时触发 `pathstamp.go` 的优雅热重载。
-- **全异步原子流水线（检查 → 暂存 → 打补丁 → 校验 → 切换 → 回滚）**：
-  - 从 `magpie-community/plugins` 的 `dist/index.json`（含 `ETag` + TTL 缓存与 jsDelivr 镜像回退）获取上游元数据，下载后强制执行 `sha512-<base64>` 恒定时间完整性校验。
-  - 在受管目录之外的 `.staging` 隔离目录解包（拦截路径穿越与越界符号链接）、单遍内存缓存应用补丁、执行 `Bun.Transpiler` 语法校验、补丁 `verify()` 断言及隔离 `HOME` 模块加载测试。
-  - 全部通过后归档旧版本至 `.snapshots`（保留最近 3 个快照），两步原子切换至生效目录；任一环节失败则立即中止，线上受管目录保持字节级不变。
-- **上游合入自动检测**：每次更新前调用 `detectUpstreamed(dir)`，若上游已原生合入对应修复，自动跳过该补丁并提示退役。
-- **本机服务安全边界**：仅绑定 `127.0.0.1`，严格校验 `Host`（防 DNS 重绑定）、`Origin`（仅放行 `Origin: null` 与同端口本机同源）及每进程随机鉴权令牌（`crypto.timingSafeEqual`）；宿主模式下 `process.stdout` 零字节输出。
-
-### 1.2 内置补丁列表（`@magpie-community/opencode-agy-cli-auth`）
-
-| 补丁 ID | 中文名称 | 默认状态 | 上游关联 | 说明 |
-| --- | --- | --- | --- | --- |
-| `agy-401-recovery` | 401 认证过期自动重连恢复 | 默认启用 | `magpie-community/plugins#1296` | 识别长驻 `agy acp` 进程 OAuth 过期尾标，自动回收旧进程并透明重试一次 |
-| `agy-silence-timeout-15m` | 静默超时放宽至 15 分钟 | 默认关闭 | `magpie-community/plugins#1465` | 将单轮静默超时默认值从 5 分钟放宽至 15 分钟 |
-| `agy-executor-error-guard` | 拦截执行器错误避免误判 200 | 默认关闭 | `magpie-community/plugins#1467` | 拦截流末尾独立行 `⚠ agent executor error:`，按失败回合返回而非误判 200 |
-
----
-
-## 2. 将 `agy-cli` 切换至补丁托管版
-
-1. 打开 Magpie 侧边栏 **补丁更新** 页面点击「接管认证插件」（或在插件目录运行 CLI）：
-   ```bash
-   bun run cli.mjs adopt \
-     --id opencode-agy-cli-auth \
-     --package @magpie-community/opencode-agy-cli-auth
-   ```
-2. 停用原 `@latest` 条目并挂载本地补丁托管目录（`~/.config/magpie/plugin-auth.json` 按 provider ID `agy-cli` 存储凭据，切换来源不会丢失任何已登录账号）：
+   macOS / Linux：
    ```bash
    magpie plugin off @magpie-community/opencode-agy-cli-auth@latest
    magpie plugin add "$HOME/.config/magpie/patched-plugins/opencode-agy-cli-auth"
    ```
-   Windows PowerShell 下对应路径为 `"$HOME\.config\magpie\patched-plugins\opencode-agy-cli-auth"`。
 
----
+   Windows（PowerShell）：
+   ```powershell
+   magpie plugin off @magpie-community/opencode-agy-cli-auth@latest
+   magpie plugin add "$HOME\.config\magpie\patched-plugins\opencode-agy-cli-auth"
+   ```
 
-## 3. CLI 用法与退出码
+### 3. 日常更新、回滚与还原
 
+日常操作直接在 **补丁更新** 页面完成：
+- **检查更新**：查询上游是否有新版本。
+- **预演校验**：仅在临时目录试打补丁并校验兼容性，不改动当前版本。
+- **应用更新**：下载新版、自动重打已启用补丁并切换生效。
+- **一键回滚**：退回最近一次更新前的快照版本。
+
+等价命令行用法（在插件目录下执行）：
 ```bash
-bun run cli.mjs <adopt|check|dry-run|update|status|rollback|toggle-patch|help> [--id <id>] [--json]
+bun run cli.mjs <adopt|check|dry-run|update|status|rollback|toggle-patch> [--id <id>] [--json]
 ```
 
-- `0`：执行成功
-- `1`：一般运行错误
-- `2`：参数用法错误
-- `3`：补丁锚点冲突或校验未通过（线上受管目录未改动）
-- `4`：SHA-512 完整性校验失败或拦截危险压缩包
+如需退出托管并恢复官方原版：
+```bash
+magpie plugin rm "$HOME/.config/magpie/patched-plugins/opencode-agy-cli-auth"
+magpie plugin on @magpie-community/opencode-agy-cli-auth@latest
+```
 
 ---
 
-## 4. 许可证
+## 内置补丁与扩展开发
+
+### 内置补丁（`opencode-agy-cli-auth`）
+
+| 补丁 ID | 名称 | 默认 | 上游关联 | 作用 |
+| --- | --- | --- | --- | --- |
+| `agy-401-recovery` | 401 认证过期自动重连恢复 | 启用 | `magpie-community/plugins#1296` | 识别长驻 `agy acp` 进程的 OAuth 过期错误，回收旧进程并透明重试一次 |
+| `agy-silence-timeout-15m` | 静默超时放宽至 15 分钟 | 关闭 | `magpie-community/plugins#1465` | 将单轮静默超时默认值由 5 分钟放宽至 15 分钟 |
+| `agy-executor-error-guard` | 拦截执行器错误避免误判 200 | 关闭 | `magpie-community/plugins#1467` | 拦截流末尾独立行 `⚠ agent executor error:`，作为错误返回而非 200 |
+
+### 为其他插件编写补丁
+
+在 `patches/<target-id>/<patch-id>.mjs` 中导出以下字段并在 `patches/index.mjs` 的 `REGISTRY` 注册，即可通过 `cli.mjs adopt --id <target-id> --package <pkg>` 纳入托管与界面管理：
+
+- 元数据：`id`、`title`、`upstreamRef`、`enabledByDefault`
+- `detectUpstreamed(dir, { fileCache })`：检测上游源码是否已包含对应修复，返回 `{ upstreamed, reason }`
+- `apply(dir, { fileCache })`：基于 `applyAnchorEdits` 修改目标文件，返回 `{ applied, summary, conflict? }`
+- `verify(dir, { fileCache })`：校验修改后的关键代码特征，返回 `{ ok, error? }`
+
+---
+
+## 许可证
 
 MIT
