@@ -36,9 +36,16 @@ system 独立置顶保留；`agent.run` 的 requestId 已唯一化。
 
 ## 手机怎么用（Termux / PRoot / magpie 安卓壳）
 
-手机端走 `gateway` 通道（**0.7.0 起也可以直接点 QQ / 微信登录**——插件自带本地粘贴页 `http://127.0.0.1:4618/`，
-不再依赖旧包名补丁，详见 README-FINAL 第四节；gateway 仍是推荐路径，账号池在网关侧维护）：登录 / 加号账号池由本地 Python 网关维护，插件用「免登录」占位账号出模型
+手机端走 `gateway` 通道（**0.7.0 起也可以直接点 QQ / 微信登录**，详见 README-FINAL 第四节；
+gateway 仍是推荐路径，账号池在网关侧维护）：登录 / 加号账号池由本地 Python 网关维护，插件用「免登录」占位账号出模型
 （占位账号现已排在真登录之后）。
+
+> **0.7.2 修好了手机端的两个真问题**（用户实测反馈）：上一版手机端点 QQ / 微信登录只剩一段文字 ——
+> 既没有粘贴输入框、也没有「打开浏览器」按钮，三个登录入口只剩两个。实测宿主契约后已改回
+> `method:"code"`（拿回「Code:」粘贴输入框）+ 不设 `opened:true`（拿回唤起按钮），
+> 并恢复 **QQ 登录 / 微信登录 / 浏览器·粘贴回调地址** 三个入口；QQ 另用 `mqqapi://forward/url`
+> 真正唤起手机 QQ App。
+
 简要：① Termux 先 `pkg install python curl -y`，跑参考仓库 `yy158358/Marvis-proxy-public` 的 `sh run.sh start` 并加号登录；
 ② 插件目录通过 magpie 控制后台 `127.0.0.1:3430` → 插件 → 导入；
 ③ 复制 `plugin/gateway.example.json` 到 `~/.magpie-marvis-native/gateway.json` 开启网关模式
