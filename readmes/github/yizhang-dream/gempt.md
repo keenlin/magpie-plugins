@@ -1,4 +1,4 @@
-# GemPT v0.5.1
+# GemPT v0.6.0
 
 [English Quick Start & Docs](./README.en.md) · [Antigravity Plugin README](./plugin/README.md) · [Third-Party Licenses](./THIRD_PARTY_LICENSES.txt)
 
@@ -10,7 +10,7 @@ GemPT 让 Gemini 通过本机 [Magpie](https://github.com/yetone/magpie) 咨询 
 | --- | --- | --- |
 | **Node.js** | `>= 20.11.0` | 运行 MCP server、hooks、CLI 与安装器 |
 | **Magpie** | `>= 0.1.1340` | 本地网关（默认 `http://127.0.0.1:3425`），从 [yetone/magpie](https://github.com/yetone/magpie) / [usemagpie.ai](https://usemagpie.ai) 安装并登录 ChatGPT/Codex 订阅 |
-| **Magpie 侧 GemPT 插件** | `0.5.1` | 提供 `Plugins → GemPT` 面板，并托管共享 Codex `app-server`（Windows 跨 Magpie 热重载独立存活，支持面板一键重启）；**仅单独安装 Codex CLI 无法替代** |
+| **Magpie 侧 GemPT 插件** | `0.6.0` | 提供 `Plugins → GemPT` 面板，并托管共享 Codex `app-server`（Windows 跨 Magpie 热重载独立存活，支持面板一键重启）；**仅单独安装 Codex CLI 无法替代** |
 | **Codex CLI** | `@openai/codex`（已实测 `0.164.0`） | 仅 `gpt_run` 仓库执行需要；通过 `npm install -g @openai/codex` 安装（纯 `gpt_ask` 咨询可不装） |
 | **Git** | 任意现代版本 | 仅并发隔离 `workspace="share"` 需要 |
 
@@ -26,7 +26,7 @@ GemPT 让 Gemini 通过本机 [Magpie](https://github.com/yetone/magpie) 咨询 
 
 ```bash
 # 推荐：从 GitHub tag 安装
-magpie plugin add github:yizhang-dream/gempt#v0.5.1
+magpie plugin add github:yizhang-dream/gempt#v0.6.0
 ```
 
 > 注：`gempt` 尚未发布到 npm registry，请勿直接运行裸包名命令 `magpie plugin add gempt`（当前会返回 404）。
@@ -39,10 +39,10 @@ magpie plugin add github:yizhang-dream/gempt#v0.5.1
 
 ```bash
 # 推荐：通过 GitHub tag 一键安装
-npx --yes github:yizhang-dream/gempt#v0.5.1 install-agy
+npx --yes github:yizhang-dream/gempt#v0.6.0 install-agy
 ```
 
-> 注：`gempt` 尚未发布到 npm registry，请使用上述 GitHub tag 渠道或从本地源码安装（裸 npm 命令 `npx --yes gempt@0.5.1 install-agy` 尚未生效）。
+> 注：`gempt` 尚未发布到 npm registry，请使用上述 GitHub tag 渠道或从本地源码安装（裸 npm 命令 `npx --yes gempt@0.6.0 install-agy` 尚未生效）。
 
 从本地源码安装时：
 - **Linux / macOS**：`bash install.sh`（支持 `--target <目录>`）
@@ -81,6 +81,8 @@ gempt init --non-interactive
 `gpt_run` 返回 `run_id`、`session_id` 和 `wait_command`。请优先原样通过 `run_command(WaitMsBeforeAsync=500)` 后台执行返回的 `wait_command` 等待系统唤醒（终端手动等待可用 `gempt-wait <run_id>`、`gempt-wait id1,id2` 或 `gempt-wait --all id1,id2`）。续聊传 `session_id`；失败返工省略 `session_id` 开新线程。
 
 新线程按 Antigravity 当前的 Gemini 家族配对，已知家族也可用 `gemini_family` 传入。回执用 `paired:<family>` 标识配对，用 `mcp` 标识未识别家族时走默认模型。旧脚本显式传入 `tier` 时仍按指定档位路由。
+
+点击顶栏 **中 / EN** 可立即切换语言。打开 **概览 → 连接与高级设置** 可跟随浏览器语言、配置本地或远程 Magpie 网关、测试尚未保存的连接、调整模型与 Codex 选项，以及恢复默认设置。恢复默认时会默认保留当前网关。远程网关可使用保存的 API 密钥。若需从环境变量取密钥，请在 GemPT 进程环境中将 `GEMPT_TRUSTED_GATEWAY` 设为该网关的 Base URL。
 
 ## 控制面板的两种用法
 
