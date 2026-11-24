@@ -105,6 +105,23 @@ Accept: text/event-stream        # 流式时
 4. **优先使用 Vibe 表面的模型名**（`mistral-vibe-cli-latest` 等），这是 CLI 真正发上去的线报名；
 5. **只透传 `content-type` 和 `accept`**，其余客户端头全部剥掉（`user-agent`、`x-stainless-*`、`x-title`、`origin`、`referer`、`anthropic-*`、`x-api-key`、cookie……）， Mistral 看不到前端是哪个 harness。
 
+### 关键实测：计量归属由 key 类型决定，不是客户端指纹
+
+用三种 key 交叉实测（2026-11，同账户）：
+
+| key 类型 | `whoami` 的 `plan_type` | 能用的模型 | 用量记哪个池 |
+| --- | --- | --- | --- |
+| Vibe key（付费） | `CHAT` | 完整目录（DeepSeek、GLM 1M、Large 4…） | **Vibe 池** |
+| Vibe key（免费） | `CHAT` | 仅 `*-vibe-free` 变体（完整版 403 `tier_not_allowed`） | **Vibe 池** |
+| API key（非 Vibe） | `API` | 完整目录，但 `*-vibe-free` 反而 403 | **API 池** |
+
+决定性的对照实验：拿 API key 用**完整的 Vibe CLI 指纹**（同 UA + `mistral-vibe-cli-latest` 模型名）发 3 个请求——
+
+- Vibe 池（$300）：**$0 变化**
+- API 池（$30）：**+$0.0073**（与按 CLI 公式算出的成本一致）
+
+**结论：反代能让任何 key 在功能上跑通（端点 / UA / 模型名全部接受），但"用量记 Vibe 额度"这个好处只有 Vibe 类型 key 能拿到**——Mistral 按 key 类型分流，UA 和模型名改不了归属。所以本项目的正确用法是**接入 Vibe key**（chat.mistral.ai/code/extensions 创建的那种）；API key 接进来功能正常，但计费上没有收益。
+
 实测补充（2026-11，真实 Vibe key）：
 
 - 三种组合（Vibe UA + vibe-cli 模型 / Claude UA + vibe-cli 模型 / 无 UA + 通用模型）都返回 200，限流头一致（1M tokens/min、2000 req/min，即 Vibe 套餐级限额，跟着 key 走）；
@@ -273,6 +290,8 @@ MISTRAL_API_KEY=mstrl_… node --test test/live.test.mjs   # 线上回归（真�
 - **单元/契约**：头改写、Anthropic ⇄ OpenAI 双向转换（tool_use / thinking / 缓存字段）、SSE 编解码、计费端点与成本公式（CLI 同款）、包与插件契约（`package.json` 字段、发现关键词、防 key 泄漏扫描）、目录与价格表一致性
 - **端到端**（mock 上游）：流式/非流式透传、错误透传、模型别名、`/usage` 统计聚合
 - **线上回归**（`test/live.test.mjs`，需 key）：模型列表、Vibe 表面模型名、工具调用、流式、**自动缓存命中**、billing 双池、插件 usage 钩子读真实数据、客户端指纹防漂移
+
+> 模型可用性**随 key 的套餐和调用方区域而变**，而且是**按 key 门控**的：Vibe 目录对账户内所有 key 都列出全部 6 个模型，但免费 Vibe key 调完整版会 403（`tier_not_allowed`），API key 调 `*-vibe-free` 同样 403。所以 live 测试会**逐个探测**候选模型（发 1-token 请求），用第一个真能用的；挑到的模型没有公开标价或不上报缓存时就带原因 skip 而不是失败——三种 key（付费 Vibe / 免费 Vibe / API）都能全绿。
 
 ### CI（GitHub Actions）
 
