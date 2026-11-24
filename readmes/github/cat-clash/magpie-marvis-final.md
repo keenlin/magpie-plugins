@@ -30,8 +30,9 @@ system 独立置顶保留；`agent.run` 的 requestId 已唯一化。
 熔断器退避改为指数退避并持久化到 `<稳定资产目录>/breaker-state.json`（重启不丢）。
 **随机 uskey 兜底默认关闭（0.7.0 行为变更）**：没有 `native/`、也没有 `MARVIS_USKEY_URL` 时直接 fail-fast
 报可操作错误，不再静默放行随机票（线上必 `4100404`）；显式设 `MARVIS_ALLOW_RANDOM_USKEY=1` 可找回旧兜底（仅开发排查用）。
-主动续期：token 剩余时效不足 `MARVIS_REFRESH_LEAD_MS`（默认 `600000`，clamp 50% TTL）时提前续期，
-微信 2h token 不再周期性掉线。完整环境变量见 [README-FINAL](./README-FINAL.md)。
+主动续期：token 剩余时效不足 `MARVIS_REFRESH_LEAD_MS`（默认 30 天，clamp 微信 TTL 1/3）时提前续期，
+同账号最多每 `MARVIS_REFRESH_MIN_INTERVAL_MS`（默认 1 小时）续一次；微信 2h token 不再周期性掉线。
+完整环境变量见 [README-FINAL](./README-FINAL.md)。
 
 ## 手机怎么用（Termux / PRoot / magpie 安卓壳）
 
