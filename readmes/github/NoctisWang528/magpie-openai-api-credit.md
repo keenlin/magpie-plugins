@@ -7,7 +7,7 @@
 已在 macOS 上验证 Magpie **0.1.4735**。可从 GitHub 安装：
 
 ```sh
-magpie plugin add 'github:NoctisWang528/magpie-openai-api-credit#v0.1.0'
+magpie plugin add 'github:NoctisWang528/magpie-openai-api-credit#v0.1.2'
 ```
 
 如需从本地目录加载：
@@ -31,7 +31,9 @@ magpie plugin add "$PWD/magpie-openai-api-credit"
    magpie quota refresh openai-api-credit
    ```
 
-额度卡沿用 Magpie 的自动刷新和手动刷新机制。到期行显示仍可用点数中最早的已知到期时间，格式为 UTC。当点数批次能与余额对账时，也会显示同一时刻到期的金额。收到 HTTP 401 或 403 时，插件会提示重新登录并核对 Organization ID。再次登录会替换本机保存的凭证。
+额度卡沿用 Magpie 的自动刷新和手动刷新机制。卡片的账户行显示仍可用点数中最早的已知到期日，悬停可看本地时间。当点数批次能与余额对账时，也会显示同一时刻到期的金额。Magpie 记录至少两次成功读取的余额后会画出走势。收到 HTTP 401 或 403 时，插件会提示重新登录并核对 Organization ID。再次登录会替换本机保存的凭证。
+
+额度卡默认使用 Magpie 图标库中的 OpenAI 图标。在「插件 → 已安装 → OpenAI API Credits → 选项」可编辑 `icon`，例如填入 `{"icon":"codex-color"}` 切换到 Codex。也可以使用自己的 HTTPS 图片地址或 `data:image/…`。清除选项可恢复默认图标。
 
 请从账单请求复制 **Platform Session Bearer Token**。普通 OpenAI API Key、ChatGPT/Codex 登录和账单会话分别使用各自的凭证。`credit_grants` 是 OpenAI 账单网页使用的接口，OpenAI 可能调整接口或会话要求。
 
