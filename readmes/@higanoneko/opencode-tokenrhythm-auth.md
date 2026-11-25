@@ -2,7 +2,7 @@
 
 TokenRhythm provider for Magpie / OpenCode.
 
-[中文文档 / Chinese docs](README.zh-CN.md)
+**English** · [简体中文](README.zh-CN.md)
 
 ## Sign-ins
 
@@ -69,19 +69,20 @@ curl https://tokenrhythm.studio/v1/decision \
   -d '{"model":"NeoHorse-Jev-4B","criteria":[{"key":"fast","description":"prioritize speed"}],"input":"..."}'
 ```
 
-## Usage card
+## Balance card
 
-The card is one balance — what the account can spend now — in the currency's
-own glyph, the way magpie's built-in balances read:
+The wallet shows as a single spendable balance in the currency's own glyph.
 
-```
-¥185.93
-```
+- **Live wallet** — refreshed with the account, to two decimals
+- **Money trend line** — because the card reports a balance rather than a
+  percentage window, magpie keeps it in its amount history: the card charts
+  the actual balance over time, and estimates when it runs out at the pace it
+  has been spent
+- **Currency-native display** — `¥` for CNY, `$` for USD, `€` for EUR; other
+  currencies fall back to their code
 
-That is the whole card, on purpose: the reader wants what is left, not what it is
-made of. Because the card is a balance and nothing else — no window — magpie keeps
-it in its amount history rather than a percent history: the trend line is money,
-drawing the total over time and when it runs out at the pace it has been spent.
+The balance intentionally shows the total only. Pay-as-you-go is about what is
+left, and a single figure keeps the card readable at a glance.
 
 ## Configuration
 
