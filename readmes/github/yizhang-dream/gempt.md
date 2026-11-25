@@ -1,4 +1,4 @@
-# GemPT v0.8.1
+# GemPT v0.9.0
 
 [English Quick Start & Docs](./README.en.md) · [Antigravity Plugin README](./plugin/README.md) · [Third-Party Licenses](./THIRD_PARTY_LICENSES.txt)
 
@@ -10,7 +10,7 @@ GemPT 让 Gemini 通过你的 [Magpie](https://github.com/yetone/magpie) 咨询�
 | --- | --- | --- |
 | **Node.js** | `>= 22.13.0` | 运行 MCP server、hooks、CLI 与安装器 |
 | **Magpie** | `>= 0.1.1340` | 本地网关（默认 `http://127.0.0.1:3425`），从 [yetone/magpie](https://github.com/yetone/magpie) / [usemagpie.ai](https://usemagpie.ai) 安装并登录 ChatGPT/Codex 订阅 |
-| **Magpie 侧 GemPT 插件** | `0.8.1` | 提供 `Plugins → GemPT` 面板，并托管共享 Codex `app-server`（Windows 跨 Magpie 热重载独立存活，支持面板一键重启）；**仅单独安装 Codex CLI 无法替代** |
+| **Magpie 侧 GemPT 插件** | `0.9.0` | 提供 `Plugins → GemPT` 面板，并托管共享 Codex `app-server`（Windows 跨 Magpie 热重载独立存活，支持面板一键重启）；**仅单独安装 Codex CLI 无法替代** |
 | **Codex CLI** | `@openai/codex`（已实测 `0.164.0`） | 仅 `gpt_run` 仓库执行需要；通过 `npm install -g @openai/codex` 安装（纯 `gpt_ask` 咨询可不装） |
 | **Git** | 任意现代版本 | 仅并发隔离 `workspace="share"` 需要 |
 
@@ -26,7 +26,7 @@ GemPT 让 Gemini 通过你的 [Magpie](https://github.com/yetone/magpie) 咨询�
 
 ```bash
 # 推荐：从 GitHub tag 安装
-magpie plugin add github:yizhang-dream/gempt#v0.8.1
+magpie plugin add github:yizhang-dream/gempt#v0.9.0
 ```
 
 > 注：`gempt` 尚未发布到 npm registry，请勿直接运行裸包名命令 `magpie plugin add gempt`（当前会返回 404）。
@@ -43,10 +43,10 @@ magpie plugin add github:yizhang-dream/gempt#v0.8.1
 
 ```bash
 # 推荐：通过 GitHub tag 一键安装
-npx --yes github:yizhang-dream/gempt#v0.8.1 install-agy
+npx --yes github:yizhang-dream/gempt#v0.9.0 install-agy
 ```
 
-> 注：`gempt` 尚未发布到 npm registry，请使用上述 GitHub tag 渠道或从本地源码安装（裸 npm 命令 `npx --yes gempt@0.8.1 install-agy` 尚未生效）。
+> 注：`gempt` 尚未发布到 npm registry，请使用上述 GitHub tag 渠道或从本地源码安装（裸 npm 命令 `npx --yes gempt@0.9.0 install-agy` 尚未生效）。
 
 从本地源码安装时：
 - **Linux / macOS**：`bash install.sh`（支持 `--target <目录>`）
