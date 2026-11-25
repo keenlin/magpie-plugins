@@ -71,24 +71,28 @@ curl https://tokenrhythm.studio/v1/decision \
 
 ## Usage card
 
-The card is the wallet TokenRhythm reports through the OpenSquilla integration,
-read without a meter: all five slots, in CNY to two decimals, and nothing else.
+The card is one balance — the wallet's total — with its composition written
+inside it, the way magpie writes a balance in several currencies:
 
-| Row | The wallet's | Meaning |
+```
+CNY 185.93 · Recharge CNY 185.93 · Gift credit CNY 0.50
+```
+
+| Part | The wallet's | Shown when |
 | --- | --- | --- |
-| Available | `available` | what the account can spend now: the total |
-| Recharge | `recharge` | what was paid in |
-| Gift credits | `bonus` | what was given |
-| Debt | `debt` | what is owed |
-| Frozen | `frozen` | what is held back |
+| the total | `available` | always |
+| Recharge | `recharge` | nonzero |
+| Gift credit | `bonus` | nonzero |
+| Debt | `debt` | nonzero |
+| Frozen | `frozen` | nonzero |
 
-A slot the wallet leaves out reads `0.00 CNY` rather than disappearing. These rows
-are balances and not shares, so `used` is left out: magpie draws no meter, no pace
-and no history line, because a pay-as-you-go wallet has nothing to be a percentage
-of. Only the total is weighed by routing, so the account with more left goes first;
-the other four are set aside, or an empty gift balance would read as an allowance
-spent. Row names are written in the interface's language by the plugin itself
-(`lib/i18n.mjs`), since magpie shows a provider plugin's name as it came.
+Because the card is a balance and nothing else — no window — magpie keeps it in
+its amount history rather than a percent history: the card's trend line is money,
+drawing the total over time and when it runs out at the pace it has been spent,
+and each nonzero component quietly keeps a line of its own. A zero part is dropped
+rather than shown. Part names are written in the interface's language by the plugin
+itself (`lib/i18n.mjs`), since magpie shows a provider plugin's words as they came;
+the total always leads the string, so its own history never depends on the language.
 
 ## Configuration
 
