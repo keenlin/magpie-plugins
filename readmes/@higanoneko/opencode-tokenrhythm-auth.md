@@ -71,28 +71,17 @@ curl https://tokenrhythm.studio/v1/decision \
 
 ## Usage card
 
-The card is one balance — the wallet's total — with its composition written
-inside it, the way magpie writes a balance in several currencies:
+The card is one balance — what the account can spend now — in the currency's
+own glyph, the way magpie's built-in balances read:
 
 ```
-CNY 185.93 · Recharge CNY 185.93 · Gift credit CNY 0.50
+¥185.93
 ```
 
-| Part | The wallet's | Shown when |
-| --- | --- | --- |
-| the total | `available` | always |
-| Recharge | `recharge` | nonzero |
-| Gift credit | `bonus` | nonzero |
-| Debt | `debt` | nonzero |
-| Frozen | `frozen` | nonzero |
-
-Because the card is a balance and nothing else — no window — magpie keeps it in
-its amount history rather than a percent history: the card's trend line is money,
-drawing the total over time and when it runs out at the pace it has been spent,
-and each nonzero component quietly keeps a line of its own. A zero part is dropped
-rather than shown. Part names are written in the interface's language by the plugin
-itself (`lib/i18n.mjs`), since magpie shows a provider plugin's words as they came;
-the total always leads the string, so its own history never depends on the language.
+That is the whole card, on purpose: the reader wants what is left, not what it is
+made of. Because the card is a balance and nothing else — no window — magpie keeps
+it in its amount history rather than a percent history: the trend line is money,
+drawing the total over time and when it runs out at the pace it has been spent.
 
 ## Configuration
 
