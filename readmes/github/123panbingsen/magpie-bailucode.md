@@ -74,7 +74,51 @@ magpie plugin options magpie-bailucode '{"protocol":"anthropic"}'
 | `GET /openapi/v1/{usage,balance,key,credits,…}` | `404` | 网关没有按 key 查额度/余额的路由 |
 | `api.bailucode.com/*` | `410 service_retired` | 旧域名已下线，别再填它 |
 
-因此这张卡片只报能证明的事：**key 是否被接受**。没有余额/用量接口，就不编一个。
+因此「只要 key」能证明的只有 **key 是否被接受**。额度不在这条链路上，见下一节。
+
+## 额度（白鹿通行证）
+
+截图里那三行额度（白鹿编码 Credits / API 平台 Tokens / 定向额度）是**账号会话**维度，藏在登录后的 <https://bailucode.com/auth/> 页面里：页面把钱包整个塞在 `var S = {...}` 里。插件读这个页面，用它生成 magpie 卡片上的三条：
+
+| 卡片行 | 取自 | 显示 |
+| --- | --- | --- |
+| 白鹿编码 | `code.planRemain` + `code.addonTokens/1000` | `21,500 Credits` |
+| API 平台 | `api.usedEff` / `api.quotaEff`，重置日取页面「用量重置」 | `657 / 3.18 亿 Tokens` |
+| 定向额度 | `packs[]`（Anthropic 等） | `剩 500 万 / 共 500 万 Tokens` |
+
+`magpie accounts` 实录（本机，通行证会话在位）：
+
+```json
+{ "agent": "bailucode", "plan": "白鹿通行证", "active": true,
+  "windows": [
+    { "name": "白鹿编码", "used": 0, "remaining": 100, "display": "21,500 Credits", "unit": "credits" },
+    { "name": "API 平台", "used": 0.0002, "remaining": 99.9998,
+      "resetsAt": "2026-12-02T16:00:00Z", "display": "657 / 3.18 亿 Tokens", "unit": "tokens" },
+    { "name": "Anthropic 协议 定向", "used": 0, "remaining": 100,
+      "display": "剩 500 万 / 共 500 万 Tokens", "unit": "tokens" }
+  ] }
+```
+
+会话放一次就行，登录流程里一个点击都不多：
+
+```bash
+# Windows
+notepad %LOCALAPPDATA%\magpie-bailucode\session.txt   # 粘 Cookie 整行，保存
+```
+
+其它放法（优先级从高到低）：插件选项 `{"session":"…"}`、环境变量 `BAILUCODE_SESSION`、`~/.config/magpie-bailucode/session`、`~/.magpie-bailucode/session`。
+
+拿 Cookie：在已登录的 bailucode 页面 F12 → Network → 刷新 → 第一条 `auth/` 请求 → Request Headers 的 `Cookie:` 整行。
+
+- **只读**：插件对门户只发 `GET /auth/`，不碰任何写接口（`/api/logout` 这种尤其不碰 — 它会直接登出账号）。
+- 会话过期会明确报「通行证会话已过期」，并在提示里给出文件路径；重新贴一次即可。
+- Cookie 等同账号登录凭证，别提交到仓库。文件放在 `%LOCALAPPDATA%`，不进 git。
+
+## 已知限制
+
+- 没有通行证会话时，卡片只显示 key 是否被接受；额度那三行要按上面的方式放一次 Cookie。
+- 没有实现 OAuth/邮箱登录——白鹿的门户登录要邮箱验证码，插件不做这一步。
+- 模型清单里的上下文/输出长度：白鹿 `GET /models` 不返回时用内置估值（只影响客户端预算，不影响可用性）。
 
 ## 请求身份（重要，实测）
 
@@ -82,18 +126,12 @@ magpie plugin options magpie-bailucode '{"protocol":"anthropic"}'
 
 | 客户端 | 结果 |
 | --- | --- |
-| `user-agent: magpie-bailucode/0.1.0`（本插件） | `401 {"code":"invalid_api_key"}` — 网关正常应答 |
+| `user-agent: magpie-bailucode/<version>`（本插件） | `401 {"code":"invalid_api_key"}` — 网关正常应答 |
 | `user-agent: undici` / Bun 默认 | `403` Cloudflare 「Just a moment…」HTML |
 | 伪装的 `Chrome/131` UA，但 TLS 不是 Chrome | `403` — **声称是浏览器但指纹不符，必被拦** |
 | `node:https` 原始请求 | `401` — 裸 TLS 也放行 |
 
 结论：别伪装浏览器。插件在 `auth.loader` 的 headers 和 `chat.headers` 两处都把 UA 钉成 `magpie-bailucode/<version>`，所以推理请求不会被 Cloudflare 拦。上面三条协议（chat / messages / responses）已用这个 UA 穿过 `HTTP(S)_PROXY=127.0.0.1:7890` 验证，全部返回 `401 invalid_api_key` 而不是 403。
-
-## 已知限制
-
-- **额度、余额、按 key 的用量**：网关没有对应路由，magpie 里看不到，请到 <https://bailucode.com/api_platform/> 查。
-- 没有实现 OAuth/邮箱登录——白鹿的 key 页面本身要登录，key 是唯一凭证。
-- 模型清单里的上下文/输出长度：白鹿 `GET /models` 不返回时用内置估值（只影响客户端预算，不影响可用性）。
 
 ## 排障
 
@@ -106,6 +144,7 @@ tail -f "$LOCALAPPDATA/Magpie/logs/app.log"   # 插件日志：service=bailucode
 - 模型列表空着：key 没配或网关拒绝，看卡片上的错误。
 - `403` + HTML：Cloudflare 拦截出口，见上。
 - `401 invalid_api_key`：key 失效/删除了，去 key 页面重新生成。
+- 额度显示「会话已过期」：`%LOCALAPPDATA%\magpie-bailucode\session.txt` 里的 Cookie 过期了，重新登录门户覆盖一次。
 - 登录时报 `json: cannot unmarshal bool into Go struct field .error of type string`：0.1.0 的地址校验返回了 `true`，magpie 要的是字符串。0.1.1 已修；`magpie plugin update` 即可。
 
 ## 卸载
@@ -119,7 +158,7 @@ magpie plugin rm magpie-bailucode
 ## 开发
 
 ```bash
-node --test test/plugin.test.mjs      # 16 个用例，全部 mock fetch
+node --test test/plugin.test.mjs      # 23 个用例，全部 mock fetch
 node ../tools/smoke.mjs               # 对真网关做一次冒烟（无效 key，直连）
 ```
 
