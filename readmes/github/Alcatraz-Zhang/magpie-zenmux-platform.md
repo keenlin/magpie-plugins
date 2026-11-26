@@ -25,9 +25,11 @@ magpie plugin add github:Alcatraz-Zhang/magpie-zenmux-platform
 | ZenMux Builder Plan | 订阅 Key（提示 `sk-subs-…`） | `sk-mgmt-…`，读取当前套餐、5 小时和 7 天额度、剩余提前重置次数及账号状态 |
 | ZenMux PAYG | 按量 Key（提示 `sk-payg-…`） | `sk-mgmt-…`，读取 PAYG 余额 |
 
-至少登录一个推理入口。只用 Builder 时可以跳过 PAYG 登录，只用 PAYG 时可以跳过 Builder 登录。Magpie 使用密码框输入 Key。前缀是输入提示，插件依据输入项区分用途，服务端负责认证。每个登录项的 Platform Key 由 Magpie 随该项保存。配额或余额查询失败时，Usage 页面会显示原因。
+至少登录一个推理入口。只用 Builder 时可以跳过 PAYG 登录，只用 PAYG 时可以跳过 Builder 登录。先在 Magpie 输入可选的 Platform Key，再填写推理 Key 并提交。两个字段都使用密码框，登录在 Magpie 内完成。前缀是输入提示，插件依据输入项区分用途，服务端负责认证。每个登录项的 Platform Key 由 Magpie 随该项保存。配额或余额查询失败时，Usage 页面会显示原因。
 
 Builder 的模型列表取 ZenMux 推理目录和实际套餐的交集，包括套餐目录里的限时模型。跳过 Platform Key 时，只展示付费 Builder 套餐共有的模型。套餐目录查询失败时会报告错误。PAYG 使用 ZenMux 的推理模型目录。
+
+如果当前 Magpie 在 PAYG 行显示「套餐」，可以在 **ZenMux PAYG → 编辑 → 高级 → 计费** 选择 **按量付费** 后保存。
 
 ## Extra Usage 和路由
 
@@ -47,3 +49,5 @@ Enter `github:Alcatraz-Zhang/magpie-zenmux-platform` in Magpie → Plugins → D
 [Magpie plugin documentation](https://usemagpie.ai/docs/plugins) · [ZenMux Platform API](https://zenmux.ai/docs/api/platform/subscription-detail.html) · [ZenMux Extra Usage](https://zenmux.ai/docs/guide/subscription.html#extra-usage-automatic-overage-switching)
 
 The plugin uses Magpie's documented provider hooks. [NieiR/magpie-zenmux](https://github.com/NieiR/magpie-zenmux) and [DylanLIiii/magpie-zenmux](https://github.com/DylanLIiii/magpie-zenmux) were used as references for ZenMux behavior.
+
+The ZenMux icon comes from DylanLIiii’s plugin. Its MIT notice is included in [assets/LICENSE](assets/LICENSE). [Original SVG](https://github.com/DylanLIiii/magpie-zenmux/blob/3c3f017/logo.svg)

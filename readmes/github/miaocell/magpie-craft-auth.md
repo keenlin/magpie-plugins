@@ -1,8 +1,12 @@
 # magpie-craft-auth
 
-**无需登录游点灵网页，本机无需开着浏览器。** 把腾讯游点灵（CraftBuddy，`craft.qq.com`）的积分接成 [magpie](https://usemagpie.ai) 网关上的一组模型：登录一次之后，Claude Code、Codex、OpenCode 或任何走 OpenAI 兼容接口的客户端都能直接调用，消耗的是这个游点灵账号的积分。
+<a href="https://linux.do"><img src="https://img.shields.io/badge/LINUX%20DO-%E7%A4%BE%E5%8C%BA-FFB003?style=flat-square" alt="LINUX DO 社区" /></a>
 
-- **不用装客户端，也不用开浏览器。** 模型调用、积分查询全走 HTTP。登录用粘贴 Cookie 或插件开的临时窗口扫码即可。
+> 感谢所有人的反馈和建议，名单见 [CREDITS.md](CREDITS.md)。
+
+**不必把网页一直开着。** 把腾讯游点灵（CraftBuddy，`craft.qq.com`）的积分接成 [magpie](https://usemagpie.ai) 网关上的一组模型：登录一次之后，Claude Code、Codex、OpenCode 或任何走 OpenAI 兼容接口的客户端都能直接调用，消耗的是这个游点灵账号的积分。
+
+- **登录一次就够了。** 模型调用、积分查询全走 HTTP，不依赖浏览器进程。登录用粘贴 Cookie，或让插件开一个临时窗口扫码。
 - **新人送 10,000 积分，每天再送 2,000。** 账号菜单里有什么模型就出什么，混元两档现在标「限时免费」。
 - **多账号。** 每次登录一个独立账号，凭据各自加密，互不干扰。
 - **不要中间层。** 不需要浏览器常驻，不需要抓页面。
@@ -11,7 +15,8 @@
 
 > 完整记录见 [CHANGELOG.md](CHANGELOG.md)，最新的在最上面。
 
-- **站点下线 GLM-5.4，清单跟着变成 4 个**（`0.1.1`，[CHANGELOG](CHANGELOG.md)）。插件本来就每次从 `/api/chathost/model-options` 现拉，不用改代码——`KNOWN` 表里留着 GLM 条目，站点恢复时会直接显示正确名称。
+- **换成游点灵官网的图标**（`0.1.2`）。之前是手绘的抽象占位，跟站点品牌没关系；现在从官网 favicon 轮廓追踪还原成矢量，紫色圆角方块配白色四角星，插件列表里一眼能认出来。
+- **站点下线 GLM-5.4，清单跟着变成 4 个**（`0.1.1`）。插件本来就每次从 `/api/chathost/model-options` 现拉，不用改代码——`KNOWN` 表里留着 GLM 条目，站点恢复时会直接显示正确名称。
 - **首个版本**（`0.1.0`）。粘贴 Cookie 或临时窗口扫码登录，账号模型菜单全量接入，额度面板报真实积分、每日登录赠送状态和各批次过期日。
 
 ## 拿到的模型
@@ -159,4 +164,16 @@ C='...' node test/list-site-models.mjs
 C='...' M='Hy4' node test/diag-model.mjs
 ```
 
-版本号约定见 [VERSIONING.md](VERSIONING.md)。
+六个脚本跑一遍会真的消耗几点积分（每个脚本发一到两轮对话），别当无副作用的冒烟测试反复刷。
+
+## 与游点灵的关系
+
+非官方插件，与腾讯及游点灵开发方无关。上游是网页版的内部接口，站点改版可能失效。验证于 2026-11。
+
+`craft.qq.com` 的积分是站点给账号的创作额度，不是付费订阅。用插件消耗它的方式，和你在网页上聊天没有区别，扣的还是那份额度。
+
+## 许可
+
+MIT。
+
+版本号约定见 [VERSIONING.md](VERSIONING.md)，贡献者名单见 [CREDITS.md](CREDITS.md)。
