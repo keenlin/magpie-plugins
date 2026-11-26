@@ -4,7 +4,7 @@
 [![Node](https://img.shields.io/badge/node-%3E%3D20-brightgreen.svg)](https://nodejs.org)
 [![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey.svg)](#兼容性与限制)
 
-把豆包工作（Doubao Work）接进 Magpie，让 Claude Code、Codex、OpenCode 这类 Agent 直接把任务外包给豆包工作的云端智能体：按工作区建项目、开会话、发任务、读回复，用量卡上还能看到这个账号的额度。
+把豆包工作（Doubao Work）接进 Magpie，让 Claude Code、Codex、OpenCode 这类 Agent 直接把任务外包给本机的豆包或者豆包工作的 app：按工作区建项目、开会话、发任务、读回复，用量卡上还能看到这个账号的额度。
 
 走反向代理去仿豆包工作自己的接口，要复刻的设备标识、风控和模型菜单太多，既麻烦又总有缺口，所以这里换了个方向：不代理模型请求，而是用账号自己的工具接口驱动真实会话。Magpie 侧只注册一个空模型目录，用哪个模型、哪个推理强度，由工具参数决定。
 
@@ -182,7 +182,6 @@ magpie-doubao-work-bridge/
 │   └── vendor/auth/lib/       登录底座：会话、Cookie、SQLite、DPAPI、保管库
 ├── test/min/                  单元测试
 ├── example/                   参考项目副本，用于对照
-├── IMPLEMENTATION.md          实现指引
 ├── LICENSE
 └── README.md
 ```
