@@ -27,10 +27,16 @@ magpie plugin add C:/path/to/magpie-bailucode
 
 ## 添加 key
 
-任一方式：
+只要一把 key，没有第二步：
 
-1. GUI：magpie → Providers → **BAILU（白鹿）** → 添加账号 → 粘贴 `sk-…`，地址提示直接回车（默认 `https://bailucode.com/openapi/v1`）。
-2. CLI：`magpie plugin login bailucode`
+1. GUI：magpie → Providers → **BAILU（白鹿）** → 添加账号 → 粘贴 `sk-…` → 完成。
+2. CLI：`magpie plugin login bailucode` → 粘 key。
+
+网关固定为 `https://bailucode.com/openapi/v1`，所以登录时不问地址。要走镜像或自建网关，用插件选项：
+
+```bash
+magpie plugin options magpie-bailucode '{"baseURL":"https://your-mirror.example.com/openapi/v1"}'
+```
 
 卡片会显示网关是否收下这枚 key；不接受时会直接给出重新生成 key 的链接。
 
@@ -98,8 +104,9 @@ tail -f "$LOCALAPPDATA/Magpie/logs/app.log"   # 插件日志：service=bailucode
 ```
 
 - 模型列表空着：key 没配或网关拒绝，看卡片上的错误。
-- 403 + HTML：Cloudflare 拦截出口，见上。
+- `403` + HTML：Cloudflare 拦截出口，见上。
 - `401 invalid_api_key`：key 失效/删除了，去 key 页面重新生成。
+- 登录时报 `json: cannot unmarshal bool into Go struct field .error of type string`：0.1.0 的地址校验返回了 `true`，magpie 要的是字符串。0.1.1 已修；`magpie plugin update` 即可。
 
 ## 卸载
 
