@@ -7,6 +7,13 @@
 - key 页面：<https://bailucode.com/api_platform/#api-keys>
 - 网关：`https://bailucode.com/openapi/v1`（一个 base，一个 `Authorization: Bearer sk-…`）
 
+## 装法（两种）
+
+| 路径 | 命令 | 何时可用 |
+| --- | --- | --- |
+| 直接装 GitHub | `magpie plugin add github:123panbingsen/magpie-bailucode` | **现在** |
+| magpie 社区索引 | Plugins 页搜「白鹿」或「bailucode」，或 `magpie plugin add @magpie-community/opencode-bailucode-auth` | 索引来自 `magpie-community/plugins` 的 `main/registry.json`，本包的 [PR #1586](https://github.com/magpie-community/plugins/pull/1586) 合并后才出现 |
+
 ## 安装
 
 ```bash
@@ -87,22 +94,19 @@ magpie plugin options magpie-bailucode '{"protocol":"anthropic"}'
 这条路径只读网关、只读门户的 `get_keys`；唯一的写操作是「你没有 key 时建一枚」，有 key 就绝不重复建。
 ## 签到（今日可领）
 
-门户的「今日可领」有三项：白鹿编码签到、Anthropic 协议定向、白鹿 API 总额度补充。插件把它们接成 magpie 的签到钩子：
+门户的「今日可领」有白鹿编码签到、Anthropic 协议定向、白鹿 API 总额度补充。插件把它接成 magpie 的签到钩子（`auth.checkin`），magpie 按北京时间每天自动问一次：
 
 ```bash
-magpie accounts checkin        # 立刻跑一次
-# 或 Providers 卡片上的签到入口；magpie 也能按天自动跑
+magpie accounts checkin            # 立刻跑一次
 ```
 
-行为分三种，都如实回报：
-
-| 情况 | 返回 | 说明 |
+| 情况 | 返回给 magpie | 表现 |
 | --- | --- | --- |
-| 三项都领了 | `already` · 今天三项都已领取 | 不发任何请求，不打扰服务端 |
-| 有未领项，但没有 Cap ticket | `manual` · 还差人机验证：打开 https://bailucode.com/auth/ 点一次领取 | 门户三项都要人机验证（`needsCaptcha` 对 `purpose==='checkin'` 恒真），脚本解不了滑块 |
-| 有 ticket（`{"captchaTicket":"…"}` 或环境变量 `BAILUCODE_CAPTCHA`） | `claimed` · 白鹿编码签到+10500000 · … | 把 `captcha_ticket` 一起发给门户的 `claim_daily_checkin` / `claim_anthropic_promo` / `claim_openclaw_promo` |
+| 三项都领了 | `outcome: "done"`, `until: 次日 00:00 (Asia/Shanghai)` | `✓ … checked in today · already` |
+| 有未领项但没有 Cap ticket | `outcome: "captcha"` + 去哪点的提示 | magpie 不会假装成功；去门户点一次领取 |
+| 带 ticket（`{"captchaTicket":"…"}` 或 `BAILUCODE_CAPTCHA`） | `outcome: "claimed"`, `credit: 合计奖励` | 真发 `claim_daily_checkin` / `claim_anthropic_promo` / `claim_openclaw_promo` |
 
-也就是说：**没有 ticket 时它不会假装签到成功**，而是把「去哪儿点一下」说清楚；领完会清掉 60 秒额度缓存，卡片立刻刷新。
+为什么不能全自动：门户对三项都要求 Cap 人机验证（页面里 `needsCaptcha(c)` 对 `purpose === 'checkin'` 恒真，promo 在当天未过人机验证时同理），实测无 ticket 直接回 `400 请先完成人机验证`。脚本不去解滑块；过一次验证后把 ticket 交给插件，或者干脆在门户点一下，magpie 这边会读到 `done`。
 ## 额度（白鹿通行证）
 
 截图里那三行额度（白鹿编码 Credits / API 平台 Tokens / 定向额度）是**账号会话**维度，藏在登录后的 <https://bailucode.com/auth/> 页面里：页面把钱包整个塞在 `var S = {...}` 里。插件读这个页面，用它生成 magpie 卡片上的三条：
