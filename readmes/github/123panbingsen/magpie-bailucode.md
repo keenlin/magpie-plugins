@@ -85,6 +85,24 @@ magpie plugin options magpie-bailucode '{"protocol":"anthropic"}'
 - 账号下一个可用 key 都没有时，会用 `{"action":"create_key","key_name":"magpie"}` 建一枚再交给你。
 
 这条路径只读网关、只读门户的 `get_keys`；唯一的写操作是「你没有 key 时建一枚」，有 key 就绝不重复建。
+## 签到（今日可领）
+
+门户的「今日可领」有三项：白鹿编码签到、Anthropic 协议定向、白鹿 API 总额度补充。插件把它们接成 magpie 的签到钩子：
+
+```bash
+magpie accounts checkin        # 立刻跑一次
+# 或 Providers 卡片上的签到入口；magpie 也能按天自动跑
+```
+
+行为分三种，都如实回报：
+
+| 情况 | 返回 | 说明 |
+| --- | --- | --- |
+| 三项都领了 | `already` · 今天三项都已领取 | 不发任何请求，不打扰服务端 |
+| 有未领项，但没有 Cap ticket | `manual` · 还差人机验证：打开 https://bailucode.com/auth/ 点一次领取 | 门户三项都要人机验证（`needsCaptcha` 对 `purpose==='checkin'` 恒真），脚本解不了滑块 |
+| 有 ticket（`{"captchaTicket":"…"}` 或环境变量 `BAILUCODE_CAPTCHA`） | `claimed` · 白鹿编码签到+10500000 · … | 把 `captcha_ticket` 一起发给门户的 `claim_daily_checkin` / `claim_anthropic_promo` / `claim_openclaw_promo` |
+
+也就是说：**没有 ticket 时它不会假装签到成功**，而是把「去哪儿点一下」说清楚；领完会清掉 60 秒额度缓存，卡片立刻刷新。
 ## 额度（白鹿通行证）
 
 截图里那三行额度（白鹿编码 Credits / API 平台 Tokens / 定向额度）是**账号会话**维度，藏在登录后的 <https://bailucode.com/auth/> 页面里：页面把钱包整个塞在 `var S = {...}` 里。插件读这个页面，用它生成 magpie 卡片上的三条：
