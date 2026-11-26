@@ -76,6 +76,15 @@ magpie plugin options magpie-bailucode '{"protocol":"anthropic"}'
 
 因此「只要 key」能证明的只有 **key 是否被接受**。额度不在这条链路上，见下一节。
 
+## 浏览器登录（可选，自动取 key）
+
+不想手动复制 key，就走这条路：`magpie plugin login bailucode` 选「浏览器登录白鹿通行证」。
+
+- **已经有一份能用的通行证会话**（就是下面那个 `session.txt`）：不弹浏览器，1~3 秒内直接向门户 `POST /api/api_keys {"action":"get_keys"}` 取回你账号下的 key，顺手把额度读一遍。
+- **没有会话或已过期**：开一个独立 profile 的 Chrome（不动你日常浏览器），等你用邮箱验证码登录；它每 2 秒从 CDP 取一次 cookie，页面一变成已登录就收工，然后同样去取 key。
+- 账号下一个可用 key 都没有时，会用 `{"action":"create_key","key_name":"magpie"}` 建一枚再交给你。
+
+这条路径只读网关、只读门户的 `get_keys`；唯一的写操作是「你没有 key 时建一枚」，有 key 就绝不重复建。
 ## 额度（白鹿通行证）
 
 截图里那三行额度（白鹿编码 Credits / API 平台 Tokens / 定向额度）是**账号会话**维度，藏在登录后的 <https://bailucode.com/auth/> 页面里：页面把钱包整个塞在 `var S = {...}` 里。插件读这个页面，用它生成 magpie 卡片上的三条：
