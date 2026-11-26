@@ -47,6 +47,17 @@ magpie plugin options magpie-bailucode '{"baseURL":"https://your-mirror.example.
 
 卡片会显示网关是否收下这枚 key；不接受时会直接给出重新生成 key 的链接。
 
+## 协议（三面同网关）
+
+同一个 base 下三种线协议，服务的都是同一批白鹿自研模型（`bailu-*` / `yuyu-*`），没有第三方厂商模型：
+
+| 面 | 路径 | 客户端包 |
+| --- | --- | --- |
+| OpenAI Chat Completions | `POST /openapi/v1/chat/completions` | `@ai-sdk/openai-compatible` |
+| Anthropic Messages | `POST /openapi/v1/messages` | `@ai-sdk/anthropic` |
+| OpenAI Responses | `POST /openapi/v1/responses` | — |
+
+门户里的「Anthropic 协议定向额度」是**按协议**划分的配额桶（走 `messages` 这一面时用），不是 Anthropic 的模型。
 ## 协议
 
 网关同一个 base 下同时说三种协议（见下表的实测结果）。默认走 OpenAI Chat Completions，白鹿的 Anthropic 风格（thinking / 工具调用）请切到 `anthropic`：
@@ -62,6 +73,8 @@ magpie plugin options magpie-bailucode '{"protocol":"anthropic"}'
 ## 模型列表从哪来
 
 1. 有 key：`GET {base}/models`，白鹿返回什么就用什么（`{data:[…]}`、`{models:[…]}`、裸数组都认）。
+
+   > 实测（2026-11-26）：这把 key 的清单是 **9 个 id，全部 `bailu-*` / `yuyu-*`**（`bailu-auto`、`bailu-2.6`、`bailu-2.7-free`、`bailu-2.8`、`bailu-2.8-nvfp8`、`bailu-apex-2.1`、`bailu-apex-2.5`、`bailu-apex-2.7`、`yuyu-air`）。当天早些时候同一个接口还返回过 27 个（多出 `bailu-image-*`、`bailu-video-*`、`bailu-ocr`、`bailu-edge` 等），数量由上游决定；出现 `503` 时插件保留上一次的列表。
 2. 拉不到（key 没配、网关 5xx、被 Cloudflare 拦）：回落到内置清单（`bailu-2.9-preview`、`bailu-2.8`、`bailu-2.7`、`bailu-apex-2.7`、`yuyu-air`），保证 provider 至少可用，不会把模型选择器清空。
 3. 你在 magpie 配置里自己写的 `models` 永远最优先，不会被覆盖。
 
