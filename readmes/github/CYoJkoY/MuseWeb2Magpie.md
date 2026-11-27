@@ -269,6 +269,7 @@ Magpie 在会话到期前 10 分钟自动续期；续不上时额度卡片显示
 - `engine.log` 不记录对话正文或 cookie；错误体和日志里的 Bearer / token / hatch cookie 会脱敏，但上游返回的普通文本仍可能出现在错误里，分享日志前请自己检查一遍。
 - 插件不会复用你日常浏览器的登录态；登录窗口用的是临时资料目录，完成后删除。
 - 引擎浏览器的 DevTools 端口只绑 `127.0.0.1` 且不带 `--remote-allow-origins=*`，所以账号资料目录里加载的网页连不上 CDP，控制不了浏览器、也读不到 muse.ai 会话；响应统一带 `nosniff`，不放缓存的默认 `no-store`，登录进度页另有 CSP、`X-Frame-Options: DENY` 和 `Referrer-Policy: no-referrer`。
+- 请求的 `Host` 必须是 `127.0.0.1`、`localhost` 或 `[::1]`（可带端口），其它一律 403 `host_not_allowed`：DNS rebinding 的页面到达端口时仍带着自己的域名，连免鉴权的 health 与登录进度页都读不到。
 - 插件把 `engine.key` 发给端口之前，先让端口证明自己持有这把密钥（health challenge，见 ADR 0004）：带 nonce 的 `/v1/health` 会回答一个只有 `engine.key` 持有者能算出的 HMAC。证明不了的端口（被抢注，或升级后仍在运行的旧引擎）拿不到密钥，插件会直接报「端口被占用」并请你重启 Magpie。
 
 完整的威胁模型、必须保持的不变量和已知残留风险见 [`SECURITY.md`](SECURITY.md)；health challenge 的取舍见 [`docs/adr/0004-health-challenge.md`](docs/adr/0004-health-challenge.md)。
@@ -349,6 +350,7 @@ magpie provider test muse-web          # 发一条真实的小请求，检查整
 | code | HTTP | 含义 | 处理 |
 | :--- | :--- | :--- | :--- |
 | `session_expired` | 401 | 会话被 muse.ai 登出 | 重新登录该账号 |
+| `host_not_allowed` | 403 | `Host` 不是回环地址 | 用 `127.0.0.1` / `localhost` 访问引擎 |
 | `account_busy` | 429 | 这个账号正在回答 | Magpie 换号；`Retry-After: 1` |
 | `quota_spent` | 429 | 这个账号额度用完 | 等重置或换号；`Retry-After: 60` |
 | `prompt_too_long` | 413 | 页面拒收过长的消息 | 开新会话或减少历史 |
