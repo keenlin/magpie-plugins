@@ -310,7 +310,7 @@ magpie provider test muse-web          # 发一条真实的小请求，检查整
 | `MUSE_WEB_FINGERPRINT_BROWSER` | 指定要复用的指纹浏览器可执行文件路径（优先级最高，Donut 的 Wayfern 也可以填） | 自动查找本机与数据目录 |
 | `MUSE_WEB_FINGERPRINT_VERSION` | 自动下载的 Apostate 版本 | 固定版本 |
 | `MUSE_WEB_FINGERPRINT_PLATFORM` | Apostate 的指纹平台（`windows`、`macos`、`linux`） | 跟随当前系统 |
-| `MUSE_WEB_CHROME` | 指纹浏览器不可用时的浏览器路径，必须是 Chromium 系；`firefox.exe` 不行。登录时选的浏览器只覆盖那一次登录窗口 | 自动查找 Chrome、Edge、Chromium、Brave |
+| `MUSE_WEB_CHROME` | 指纹浏览器不可用时的浏览器路径，必须是 Chromium 系；`firefox.exe` 不行。必须是绝对路径的普通文件，相对路径、目录、不存在的文件按未设置处理（原因写进 `engine.log`），不会退回自动查找。登录时选的浏览器只覆盖那一次登录窗口 | 自动查找 Chrome、Edge、Chromium、Brave |
 | `MUSE_WEB_IDLE_MIN` | 闲置多少分钟后关浏览器 | `60` |
 | `MUSE_WEB_PREWARM` | 设为 `0` 时不预热 | 预热 |
 | `MUSE_WEB_VERIFY_LOGIN` | 设为 `0` 时登录后不发测试消息 | 发送 |
@@ -344,7 +344,7 @@ magpie provider test muse-web          # 发一条真实的小请求，检查整
 | 首字等了很久，提示虚拟机正在预热 | muse.ai 那边的虚拟机还没就绪，稍后再试 |
 | 卡片上没有百分比 | 虚拟机还在连接，2 分钟后自动重读 |
 | 登录反复不完成，账号数一直是 0 | 默认浏览器里那个页面只是进度。请在另开的指纹浏览器或 Chromium 窗口里登录，并等引擎确认会话后它自己关掉。看 `engine.log` 有没有 `verify` 或 `warm`；状态页上的错误若是 `/api/session HTTP 403`，是出口地区或代理问题，可试 `MUSE_WEB_PROXY=direct` |
-| 登录前没有出现我的浏览器 | 选最后一项「手动填写浏览器路径…」填可执行文件的绝对路径（粘贴的引号会自动去掉；相对路径、目录、不存在的文件会被当场拒绝）；或设 `MUSE_WEB_CHROME` 后重开 Magpie |
+| 登录前没有出现我的浏览器 | 选最后一项「手动填写浏览器路径…」填可执行文件的绝对路径（粘贴的引号会自动去掉；相对路径、目录、不存在的文件会被当场拒绝）；或设 `MUSE_WEB_CHROME` 后重开 Magpie——这个值同样要是绝对路径的普通文件，填了 `chrome.exe` 这样的相对名会被当成未设置，`engine.log` 里会写原因 |
 | 用了 Donut Browser，但引擎没用它的内核 | 引擎会自己找 `%LOCALAPPDATA%\DonutBrowser`、`DONUTBROWSER_DATA_DIR` / `DONUTBROWSER_DATA_ROOT` 和 Scoop 的 `apps\donutbrowser\current` 下的 `binaries\wayfern\<版本>`。装在别处时设 `MUSE_WEB_DONUT_BROWSER` 指向 Donut 的 data 目录或 `chrome.exe`；不想用 Donut 时设 `MUSE_WEB_DONUT_BROWSER=0` |
 | 日志显示指纹浏览器下载或安装失败 | 引擎会自动改用本机 Chrome/Edge/Chromium。检查网络代理后重试，或用 `MUSE_WEB_FINGERPRINT_BROWSER` 指定本机已有的 Apostate 或 Wayfern 内核；确实不想用它时设 `MUSE_WEB_FINGERPRINT=0` |
 | 登录失败：「已登录，但账号没有回答测试消息」 | 会话拿到了但对话不通，常见于虚拟机还在预热，稍后重新登录 |
