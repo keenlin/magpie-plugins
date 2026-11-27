@@ -33,19 +33,39 @@ GET  /v1/conversations/messages      断线后按 ?conversationId&after= 补齐�
 ## 装
 
 ```sh
-magpie plugin add magpie-plugin-today-auth        # 上架后
-magpie plugin add /path/to/magpie-today-plugin    # 本地目录（开发时）
+magpie plugin add github:Souitou-iop/magpie-plugin-today-auth
+```
+
+⚠ **npm 上还没有这个包**：`magpie plugin add magpie-plugin-today-auth` 会得到
+`GET https://registry.npmjs.org/magpie-plugin-today-auth - 404`，装上面的 GitHub 地址。
+仓库带了 `magpie-plugin` 话题，magpie 插件页的发现列表里也能直接装。
+本地目录开发时：
+
+```sh
+magpie plugin add /path/to/magpie-plugin-today-auth
 ```
 
 装完 `magpie plugin list` 应看到：
 
 ```
-/…/magpie-today-plugin  on
-  today (Today AI, 3 models)  signed in as <你的名字>
+github:Souitou-iop/magpie-plugin-today-auth  on
+  today (Today AI, 1 models)  not signed in · magpie plugin login today
 ```
 
 > 本地目录装的插件，`magpie plugin on/off` 认的是**路径**，不是 `today`：
-> `magpie plugin on /path/to/magpie-today-plugin`。改完代码用这对命令重载。
+> `magpie plugin on /path/to/magpie-plugin-today-auth`。改完代码用这对命令重载。
+
+### 装完之后，Today 在哪里
+
+**没登录之前，供应商页的列表里没有 Today 的卡片** —— magpie 把还没登录的插件供应商
+放在**「来自插件」**区（`magpie plugin list` 里能看到它，GUI 里也不缺）：
+
+1. 供应商页找 **来自插件** 区（还没加过任何供应商时它就在首页；已有时在 **添加供应商** 的列表里）；
+2. 点 **Today AI**，选登录方式 —— 手机验证码，或粘贴浏览器里的
+   `better-auth.session_token` Cookie（能自动续期，推荐）；
+3. 登录成功后，Today AI 的卡片出现在供应商列表，显示账号名与模型数。
+
+命令行一条也行：`magpie plugin login today`。
 
 ---
 
@@ -171,7 +191,7 @@ magpie plugin options today '{"isolation":"main"}'
 | 登录端点 | `phone-number/send-otp` / `verify` 实测可用；`sign-in/email` 在本区域 403 关闭 |
 | 验证码字段名 | 活体探针：`{phoneNumber,code}` → `OTP not found.`；`{phoneNumber,otp}` → `VALIDATION_ERROR` |
 | 设备注册 | 不注册就握手 → `{"type":"error","message":"Device not found or inactive"}` + 4003 |
-| 端到端（假服务端） | `npm test` 49 条：含最小 WebSocket 实现、设备注册、真实事件形状；WS 出字、轮询兜底、档位、401、额度、目录、单帧 error 不断流 |
+| 端到端（假服务端） | `npm test` 53 条：含最小 WebSocket 实现、设备注册、真实事件形状；WS 出字、轮询兜底、档位、401、额度、目录、单帧 error 不断流 |
 | 真账号直连插件 | `provider.models` 读到 3 档；`loader.fetch` 出字（`pong`，4.3s，WS 直连）；`auth.usage` 读到 Pro / 用量 26% / 五条拆分 |
 | 真账号过 magpie 网关 | `POST /v1/chat/completions` 两个档位都回 `pong`；`/v1/magpie/quotas` 里 `today` 卡片是 plan Pro、用量 26% + 五条拆分 |
 | 会话隔离 | 同一 session 第二轮答出「第一轮让它记住的那个词」，另一 session 互不影响；两轮分别落在两条 Today 任务会话里 |
