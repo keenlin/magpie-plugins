@@ -1,5 +1,7 @@
 # levin-harness-connector
 
+English | [简体中文](README.zh-CN.md)
+
 A [magpie](https://usemagpie.ai) **agent plugin**: Levin Harness becomes its own row on
 magpie's **Agents** page, with Levin Harness's name, Levin Harness's icon, and its
 usage counted under its own name.
