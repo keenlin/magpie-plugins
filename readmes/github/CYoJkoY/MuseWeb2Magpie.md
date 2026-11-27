@@ -65,7 +65,7 @@ muse.ai 没有公开 API。这个引擎把 Magpie 发来的 Chat Completions 请
 | **忙时换号** | 一个账号同时只回答一条，忙时返回 429，由 Magpie 换号。 |
 | **自愈** | 页面卡住、虚拟机预热、流式中断都有明确的 `error.code` 与 `Retry-After`。 |
 | **本地优先** | 引擎只监听 `127.0.0.1`，cookie 与密钥只存在本机数据目录。 |
-| **原生引擎 + TypeScript 驱动** | Go 负责 HTTP、存储和进程边界；TypeScript 只负责需要浏览器页面的操作，二者通过受约束的 NDJSON 协议连接。 |
+| **TypeScript 引擎 + TypeScript 驱动** | 引擎负责 HTTP、存储和进程边界，驱动只负责需要浏览器页面的操作，二者通过受约束的 NDJSON 协议连接；两者都是 TypeScript，用同一个 Node 运行时启动。 |
 
 <a name="readme-architecture"></a>
 
@@ -78,7 +78,7 @@ Agent (Codex / OpenCode)
 Magpie gateway ── chooses account, retries, shows cards
         │  /v1/chat/completions  (Bearer engine.key)
         ▼
-Go engine  ── 127.0.0.1:18611 · static native binary
+engine  ── 127.0.0.1:18611 · node engine/main.ts
    ├── HTTP / store  accounts.json + cookies + engine.key
    ├── auth / SSE    loopback auth, chat, usage, login, shutdown
    └── driver bridge NDJSON over stdin/stdout
@@ -204,8 +204,8 @@ Connector 不启动浏览器、不读 cookie、不 spawn 进程，只连接你�
 
 - [Magpie](https://github.com/yetone/magpie)，在 0.1.1223 上验证过。
 - 打开 muse.ai 的浏览器按这个顺序找：本机 [Donut Browser](https://github.com/donutbrowser/donutbrowser) 的 Wayfern 内核 → 本机已有的开源指纹浏览器 [Apostate](https://github.com/heretic-tech/apostate) → 引擎自动下载一次固定版本（带 sha256 校验）到数据目录。Wayfern 在命令行上就是普通 Chromium，所以按 Chromium 启动，不加指纹参数、不碰 Donut 的账号数据。两者都没有时用本机的 Chrome、Edge、Chromium 或 Brave；下载失败或设为 `MUSE_WEB_FINGERPRINT=0` 也一样。Firefox 不能当登录窗口：引擎靠 Chrome DevTools Protocol 操作页面。
-- 安装包已带当前平台和架构的 Go 原生引擎，日常使用不需要另装 Go；引擎会使用插件宿主提供的 TypeScript 运行时启动浏览器驱动。
-- 如果从源码开发或运行测试，需要 Go `>=1.27.4` 与 Node.js `>=22.18`；具体命令见[开发](#readme-development)。
+- 安装包只含 TypeScript 源码，引擎和浏览器驱动都由插件宿主的 Node 运行时直接执行（需要 Node.js `>=22.18`，它默认能从 `.ts` 里剥掉类型标注），不需要另外编译或随包分发原生二进制。
+- 如果从源码开发或运行测试，只需要 Node.js `>=22.18`；具体命令见[开发](#readme-development)。
 - 能访问 muse.ai 的网络。需要代理时见[设置](#readme-settings)。
 
 ### 命令
@@ -385,21 +385,18 @@ magpie provider test muse-web          # 发一条真实的小请求，检查整
 ```sh
 npm run typecheck      # TypeScript 类型检查（源码与测试都在严格检查内）
 npm run no-javascript  # 确认仓库里没有 .js / .mjs 源文件
-npm run build:engine   # 用 Go 构建当前平台的本地引擎
-npm run test:go        # Go 单元测试
-npm run bench          # Go 驱动协议基准测试（事件解码、请求编码、账号查询）
-npm test               # 插件契约 + TypeScript / Go 引擎集成测试
+npm test               # 插件契约 + 引擎集成测试（HTTP、存储、日志、驱动）
 ```
 
-插件、浏览器驱动和测试使用 TypeScript，HTTP 引擎与账号存储使用 Go；不产出也不提交 JavaScript 源文件。Go 引擎的 HTTP 和存储部分不依赖 Node；浏览器驱动由宿主运行时加载 `engine/driver.ts`。
+插件、浏览器驱动、HTTP 引擎和测试全部是 TypeScript，不产出也不提交 JavaScript 源文件。引擎入口是 `engine/main.ts`，由插件用当前的 Node 运行时（`process.execPath`）直接以子进程方式启动，不需要另外构建或随包分发原生二进制；加载它的 Node 会去掉类型标注后直接执行。
 
-`npm run build:engine` 需要 Go；`npm test` 的 `pretest` 会自动构建当前平台的引擎。CI 会先安装 Node.js 与 Go，再执行类型检查、no-JavaScript 守卫、Go 检查和完整测试。
+`npm test` 直接跑源码：Node 22.18 起默认能从 `.ts` 里剥掉类型标注，没有额外的构建步骤。CI 会先安装 Node.js，再执行类型检查、no-JavaScript 守卫和完整测试。
 
 发布：先把 `package.json` 的版本号和 `CHANGELOG.md` 里同名小节准备好，再推送同名 tag。`.github/workflows/release.yml` 会校验 tag 与版本号一致、跑完整测试、`npm pack`，然后把 tgz 和 `assets/icon.png`、`assets/icon.ico` 传到 GitHub Release，发布说明取自 CHANGELOG 对应小节。补发已有 tag 时，在 Actions 里手动触发 `release` 并填入 tag。
 
 ```sh
-git tag v0.11.0
-git push origin v0.11.0
+git tag v0.12.0
+git push origin v0.12.0
 ```
 
 没装浏览器时，用到浏览器的测试会自动跳过。Linux 环境可以用 Docker 跑：
@@ -417,7 +414,12 @@ MuseWeb2Magpie
 ├── connector/
 │   └── index.ts             只连外部引擎的轻量版（provider id 相同）
 ├── engine/
-│   ├── driver.ts            Go 引擎启动的 NDJSON 驱动：浏览器、登录、页面评估
+│   ├── main.ts              引擎入口：监听回环、父进程守护与预热 / 保活调度
+│   ├── server.ts            loopback HTTP、SSE、鉴权和错误映射
+│   ├── store.ts             私有账号存储和 cookie 续期
+│   ├── bridge.ts            TypeScript 驱动监督、请求复用和回调
+│   ├── login-page.ts        登录进度页（模板转义）
+│   ├── driver.ts            引擎启动的 NDJSON 驱动：浏览器、登录、页面评估
 │   ├── muse.ts              浏览器里的 muse.ai 页面操作
 │   ├── cdp.ts               Chrome DevTools Protocol 客户端
 │   ├── browser.ts           浏览器查找、启动、参数、清理
@@ -425,13 +427,7 @@ MuseWeb2Magpie
 │   ├── prompt.ts            把对话历史拼成发到页面的文本
 │   ├── tools.ts             工具调用：提示词与解析
 │   ├── login.ts             浏览器登录窗口
-│   └── paths.ts · net.ts · local-fetch.ts · parent.ts · version.ts
-├── engine-go/
-│   ├── main.go              原生引擎入口、父进程守护与预热 / 保活调度
-│   ├── server.go            loopback HTTP、SSE、鉴权和错误映射
-│   ├── store.go             私有账号存储和 cookie 续期
-│   ├── driver.go            TypeScript 驱动监督、请求复用和回调
-│   └── login_page.go        登录进度页（模板转义）
+│   └── paths.ts · net.ts · local-fetch.ts · parent.ts · health.ts · redact.ts · accounts.ts · log.ts · types.ts · version.ts
 └── test/                     契约与引擎测试
 ```
 
@@ -439,7 +435,7 @@ MuseWeb2Magpie
 
 ## <img src="assets/readme/icons/roadmap.svg" width="24" height="24" alt=""> 状态与路线
 
-当前版本 **0.11.0**：TypeScript 源码、Go 原生 loopback 引擎、稳定的网页账号接入、会话复用、工具调用、额度卡片与自动续期；冷启动与驱动协议经过一轮性能剖析和优化。
+当前版本 **0.12.0**：纯 TypeScript 源码（不再有 Go 引擎）、TypeScript loopback 引擎、稳定的网页账号接入、会话复用、工具调用、额度卡片与自动续期；冷启动与驱动协议经过一轮性能剖析和优化。
 
 路线上的工作主要是提升与网页改版的兼容性、改进错误恢复与诊断，以及让引擎的部署形态更灵活。图片、文件上传与生图生视频不在计划内——那是 muse2api 的方向。
 
