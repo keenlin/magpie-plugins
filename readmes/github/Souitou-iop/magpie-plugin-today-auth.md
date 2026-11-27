@@ -173,9 +173,12 @@ magpie plugin options today '{"isolation":"main"}'
   上传，再把 `fileRef` 拼进 `parts[].uploadedFile` —— 拼的时候必须带
   `url / storagePath / downloadUrl / fileRef`，缺一个就是 `400 Invalid request`。
   上限：每次最多 4 张、单张 20 MB、只认 `image/*`；PDF、语音、音频没接。
-- **上下文按 1 MiB 截断。** Today 单条 canonical 消息上限 1 MiB（schema 写死），插件取最后
-  一条 user 消息，超过 18 万字符留头 60% + 尾 40%。会话隔离后 Today 自己保留历史，
-  但 agent 每轮仍会带完整上下文来，所以这条截断仍然有效。
+- **上下文按 1 MiB 截断（按转义字节算）。** Today 单条 canonical 消息上限 1 MiB（schema
+  写死，实测 950KB 正文整条读完、1000KB 起 400），插件取最后一条 user 消息，超过
+  100 万转义字节留头 60% + 尾 40%，切分落在完整码点上。换行、引号这些转义膨胀都算在
+  预算里（`escapedBytes`），所以怎么都不会撞到服务端的 400。1 MiB ≈ 英文 25 万 token、
+  中文 21 万 token —— 声明的 200K 窗口是够用的，**1M 到不了：那是单条消息协议的上限**，
+  不是模型的。
 - **token 数是估的。** 消息、`/v1/config`、history 里都没有 usage / token 字段（查过），
   只有 `pricing` 的 1% 粒度进度；SSE 末尾的 `usage` 按字符估（中文 1.6 字符/token，
   英文 4 字符/token）。真实额度看卡片。
@@ -191,7 +194,8 @@ magpie plugin options today '{"isolation":"main"}'
 | 登录端点 | `phone-number/send-otp` / `verify` 实测可用；`sign-in/email` 在本区域 403 关闭 |
 | 验证码字段名 | 活体探针：`{phoneNumber,code}` → `OTP not found.`；`{phoneNumber,otp}` → `VALIDATION_ERROR` |
 | 设备注册 | 不注册就握手 → `{"type":"error","message":"Device not found or inactive"}` + 4003 |
-| 端到端（假服务端） | `npm test` 53 条：含最小 WebSocket 实现、设备注册、真实事件形状；WS 出字、轮询兜底、档位、401、额度、目录、单帧 error 不断流 |
+| 端到端（假服务端） | `npm test` 57 条：含最小 WebSocket 实现、设备注册、真实事件形状；WS 出字、轮询兜底、档位、401、额度、目录、单帧 error 不断流 |
+| 上下文深度（真账号，2026-11-28 捞针） | 直连：200/500/800/900/950KB 正文的开头/中间/结尾三个针语全中（≈50k–237k token，13–14s）；1000KB 起 `400 Invalid request`。经插件 600KB（老版中间被截，修复后全中） |
 | 真账号直连插件 | `provider.models` 读到 3 档；`loader.fetch` 出字（`pong`，4.3s，WS 直连）；`auth.usage` 读到 Pro / 用量 26% / 五条拆分 |
 | 真账号过 magpie 网关 | `POST /v1/chat/completions` 两个档位都回 `pong`；`/v1/magpie/quotas` 里 `today` 卡片是 plan Pro、用量 26% + 五条拆分 |
 | 会话隔离 | 同一 session 第二轮答出「第一轮让它记住的那个词」，另一 session 互不影响；两轮分别落在两条 Today 任务会话里 |
