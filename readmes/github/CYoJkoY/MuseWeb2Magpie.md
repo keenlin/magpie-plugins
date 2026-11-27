@@ -388,15 +388,15 @@ npm run no-javascript  # 确认仓库里没有 .js / .mjs 源文件
 npm test               # 插件契约 + 引擎集成测试（HTTP、存储、日志、驱动）
 ```
 
-插件、浏览器驱动、HTTP 引擎和测试全部是 TypeScript，不产出也不提交 JavaScript 源文件。引擎入口是 `engine/main.ts`，由插件用当前的 Node 运行时（`process.execPath`）直接以子进程方式启动，不需要另外构建或随包分发原生二进制；加载它的 Node 会去掉类型标注后直接执行。
+插件、浏览器驱动、HTTP 引擎和测试全部是 TypeScript，不产出也不提交 JavaScript 源文件。引擎入口是 `engine/main.ts`，由插件用当前运行时（`process.execPath`，Magpie 下就是它自带的 Bun）直接以子进程方式启动，不需要另外构建或随包分发原生二进制；Node 22.18 起与任何 Bun 都会去掉类型标注后直接执行。
 
 `npm test` 直接跑源码：Node 22.18 起默认能从 `.ts` 里剥掉类型标注，没有额外的构建步骤。CI 会先安装 Node.js，再执行类型检查、no-JavaScript 守卫和完整测试。
 
 发布：先把 `package.json` 的版本号和 `CHANGELOG.md` 里同名小节准备好，再推送同名 tag。`.github/workflows/release.yml` 会校验 tag 与版本号一致、跑完整测试、`npm pack`，然后把 tgz 和 `assets/icon.png`、`assets/icon.ico` 传到 GitHub Release，发布说明取自 CHANGELOG 对应小节。补发已有 tag 时，在 Actions 里手动触发 `release` 并填入 tag。
 
 ```sh
-git tag v0.12.0
-git push origin v0.12.0
+git tag v0.12.2
+git push origin v0.12.2
 ```
 
 没装浏览器时，用到浏览器的测试会自动跳过。Linux 环境可以用 Docker 跑：
@@ -427,7 +427,7 @@ MuseWeb2Magpie
 │   ├── prompt.ts            把对话历史拼成发到页面的文本
 │   ├── tools.ts             工具调用：提示词与解析
 │   ├── login.ts             浏览器登录窗口
-│   └── paths.ts · net.ts · local-fetch.ts · parent.ts · health.ts · redact.ts · accounts.ts · log.ts · types.ts · version.ts
+│   └── paths.ts · net.ts · local-fetch.ts · parent.ts · health.ts · redact.ts · accounts.ts · log.ts · runtime.ts · types.ts · version.ts
 └── test/                     契约与引擎测试
 ```
 
@@ -435,7 +435,7 @@ MuseWeb2Magpie
 
 ## <img src="assets/readme/icons/roadmap.svg" width="24" height="24" alt=""> 状态与路线
 
-当前版本 **0.12.0**：纯 TypeScript 源码（不再有 Go 引擎）、TypeScript loopback 引擎、稳定的网页账号接入、会话复用、工具调用、额度卡片与自动续期；冷启动与驱动协议经过一轮性能剖析和优化。
+当前版本 **0.12.2**：纯 TypeScript 源码（不再有 Go 引擎）、TypeScript loopback 引擎、稳定的网页账号接入、会话复用、工具调用、额度卡片与自动续期；冷启动与驱动协议经过一轮性能剖析和优化。
 
 路线上的工作主要是提升与网页改版的兼容性、改进错误恢复与诊断，以及让引擎的部署形态更灵活。图片、文件上传与生图生视频不在计划内——那是 muse2api 的方向。
 
