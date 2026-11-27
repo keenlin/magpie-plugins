@@ -269,8 +269,9 @@ Magpie 在会话到期前 10 分钟自动续期；续不上时额度卡片显示
 - `engine.log` 不记录对话正文或 cookie；错误体和日志里的 Bearer / token / hatch cookie 会脱敏，但上游返回的普通文本仍可能出现在错误里，分享日志前请自己检查一遍。
 - 插件不会复用你日常浏览器的登录态；登录窗口用的是临时资料目录，完成后删除。
 - 引擎浏览器的 DevTools 端口只绑 `127.0.0.1` 且不带 `--remote-allow-origins=*`，所以账号资料目录里加载的网页连不上 CDP，控制不了浏览器、也读不到 muse.ai 会话；响应统一带 `nosniff`，不放缓存的默认 `no-store`，登录进度页另有 CSP、`X-Frame-Options: DENY` 和 `Referrer-Policy: no-referrer`。
+- 插件把 `engine.key` 发给端口之前，先让端口证明自己持有这把密钥（health challenge，见 ADR 0004）：带 nonce 的 `/v1/health` 会回答一个只有 `engine.key` 持有者能算出的 HMAC。证明不了的端口（被抢注，或升级后仍在运行的旧引擎）拿不到密钥，插件会直接报「端口被占用」并请你重启 Magpie。
 
-完整的威胁模型、必须保持的不变量和已知残留风险见 [`SECURITY.md`](SECURITY.md)。
+完整的威胁模型、必须保持的不变量和已知残留风险见 [`SECURITY.md`](SECURITY.md)；health challenge 的取舍见 [`docs/adr/0004-health-challenge.md`](docs/adr/0004-health-challenge.md)。
 
 <a name="readme-usage"></a>
 
@@ -339,6 +340,7 @@ magpie provider test muse-web          # 发一条真实的小请求，检查整
 | 登录失败：「已登录，但账号没有回答测试消息」 | 会话拿到了但对话不通，常见于虚拟机还在预热，稍后重新登录 |
 | Agent 说它看不到你的文件，或让你自己运行命令 | 模型这次没按工具格式回答，重试或换种说法；日志里会是 `tools=…→text` |
 | 连不上 muse.ai | 检查网络，或用 `MUSE_WEB_PROXY` 指定代理 |
+| 提示端口被占用、无法证明持有 engine.key | 升级插件后旧版引擎可能还在跑。重启 Magpie（watchdog 会结束旧引擎），或手动结束占用该端口的进程 |
 
 ### 错误码
 
