@@ -311,6 +311,7 @@ magpie provider test muse-web          # 发一条真实的小请求，检查整
 | `MUSE_WEB_FINGERPRINT_VERSION` | 自动下载的 Apostate 版本 | 固定版本 |
 | `MUSE_WEB_FINGERPRINT_PLATFORM` | Apostate 的指纹平台（`windows`、`macos`、`linux`） | 跟随当前系统 |
 | `MUSE_WEB_CHROME` | 指纹浏览器不可用时的浏览器路径，必须是 Chromium 系；`firefox.exe` 不行。必须是绝对路径的普通文件，相对路径、目录、不存在的文件按未设置处理（原因写进 `engine.log`），不会退回自动查找。登录时选的浏览器只覆盖那一次登录窗口 | 自动查找 Chrome、Edge、Chromium、Brave |
+| `MUSE_WEB_START_MS` | 等浏览器打开调试端口的时长（毫秒）；小于 `1000`、空值或不是数字时按未设置处理。冷启动很慢的机器可以调长 | `60000` |
 | `MUSE_WEB_IDLE_MIN` | 闲置多少分钟后关浏览器 | `60` |
 | `MUSE_WEB_PREWARM` | 设为 `0` 时不预热 | 预热 |
 | `MUSE_WEB_VERIFY_LOGIN` | 设为 `0` 时登录后不发测试消息 | 发送 |
@@ -346,6 +347,7 @@ magpie provider test muse-web          # 发一条真实的小请求，检查整
 | 登录反复不完成，账号数一直是 0 | 默认浏览器里那个页面只是进度。请在另开的指纹浏览器或 Chromium 窗口里登录，并等引擎确认会话后它自己关掉。看 `engine.log` 有没有 `verify` 或 `warm`；状态页上的错误若是 `/api/session HTTP 403`，是出口地区或代理问题，可试 `MUSE_WEB_PROXY=direct` |
 | 登录前没有出现我的浏览器 | 选最后一项「手动填写浏览器路径…」填可执行文件的绝对路径（粘贴的引号会自动去掉；相对路径、目录、不存在的文件会被当场拒绝）；或设 `MUSE_WEB_CHROME` 后重开 Magpie——这个值同样要是绝对路径的普通文件，填了 `chrome.exe` 这样的相对名会被当成未设置，`engine.log` 里会写原因 |
 | 用了 Donut Browser，但引擎没用它的内核 | 引擎会自己找 `%LOCALAPPDATA%\DonutBrowser`、`DONUTBROWSER_DATA_DIR` / `DONUTBROWSER_DATA_ROOT` 和 Scoop 的 `apps\donutbrowser\current` 下的 `binaries\wayfern\<版本>`。装在别处时设 `MUSE_WEB_DONUT_BROWSER` 指向 Donut 的 data 目录或 `chrome.exe`；不想用 Donut 时设 `MUSE_WEB_DONUT_BROWSER=0` |
+| 提示「浏览器没有打开调试端口」 | 报错里写着等了多久、`DevToolsActivePort` 是还没出现还是里面写着什么、最后一次探测的回答、以及浏览器自己最后三行 stderr，按这四样判断：冷启动慢（老硬盘、开机后第一次启动、被安全软件扫描）就把 `MUSE_WEB_START_MS` 调长，比如 `180000`；文件一直不出现时看 stderr 里浏览器自己说的原因 |
 | 日志显示指纹浏览器下载或安装失败 | 引擎会自动改用本机 Chrome/Edge/Chromium。检查网络代理后重试，或用 `MUSE_WEB_FINGERPRINT_BROWSER` 指定本机已有的 Apostate 或 Wayfern 内核；确实不想用它时设 `MUSE_WEB_FINGERPRINT=0` |
 | 登录失败：「已登录，但账号没有回答测试消息」 | 会话拿到了但对话不通，常见于虚拟机还在预热，稍后重新登录 |
 | Agent 说它看不到你的文件，或让你自己运行命令 | 模型这次没按工具格式回答，重试或换种说法；日志里会是 `tools=…→text` |
@@ -395,8 +397,8 @@ npm test               # 插件契约 + 引擎集成测试（HTTP、存储、日
 发布：先把 `package.json` 的版本号和 `CHANGELOG.md` 里同名小节准备好，再推送同名 tag。`.github/workflows/release.yml` 会校验 tag 与版本号一致、跑完整测试、`npm pack`，然后把 tgz 和 `assets/icon.png`、`assets/icon.ico` 传到 GitHub Release，发布说明取自 CHANGELOG 对应小节。补发已有 tag 时，在 Actions 里手动触发 `release` 并填入 tag。
 
 ```sh
-git tag v0.12.3
-git push origin v0.12.3
+git tag v0.12.4
+git push origin v0.12.4
 ```
 
 没装浏览器时，用到浏览器的测试会自动跳过。Linux 环境可以用 Docker 跑：
@@ -435,7 +437,7 @@ MuseWeb2Magpie
 
 ## <img src="assets/readme/icons/roadmap.svg" width="24" height="24" alt=""> 状态与路线
 
-当前版本 **0.12.3**：纯 TypeScript 源码（不再有 Go 引擎）、TypeScript loopback 引擎、稳定的网页账号接入、会话复用、工具调用、额度卡片与自动续期；冷启动与驱动协议经过一轮性能剖析和优化。
+当前版本 **0.12.4**：纯 TypeScript 源码（不再有 Go 引擎）、TypeScript loopback 引擎、稳定的网页账号接入、会话复用、工具调用、额度卡片与自动续期；冷启动与驱动协议经过一轮性能剖析和优化。
 
 路线上的工作主要是提升与网页改版的兼容性、改进错误恢复与诊断，以及让引擎的部署形态更灵活。图片、文件上传与生图生视频不在计划内——那是 muse2api 的方向。
 

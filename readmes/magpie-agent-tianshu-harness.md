@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="https://raw.githubusercontent.com/LUMOGRESS/magpie-agent-Tianshu-harness/v2.5.0/assets/hero-banner.jpg" alt="Magpie × Tianshu 4.1.54+ Bridge" width="100%" />
+<img src="https://raw.githubusercontent.com/LUMOGRESS/magpie-agent-Tianshu-harness/master/assets/hero-banner.jpg" alt="Magpie × Tianshu 4.1.54+ Bridge" width="100%" />
 
 # 天枢 Tianshu × Magpie 插件
 
@@ -50,7 +50,7 @@
 插件由 **moejs 沙盒入口（`tianshu.agent.js`）** 与 **Magpie Bun 伴生桥接（`index.mjs` + `bridge.mjs`）** 协同工作：
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/LUMOGRESS/magpie-agent-Tianshu-harness/v2.5.0/assets/architecture.svg" alt="双模块实时桥接架构图" width="100%" />
+  <img src="https://raw.githubusercontent.com/LUMOGRESS/magpie-agent-Tianshu-harness/master/assets/architecture.svg" alt="双模块实时桥接架构图" width="100%" />
 </p>
 
 1. **意图采集**：在 Magpie 选中或切换模型时，`tianshu.agent.js` 将网关地址、密钥、模型清单与选中模型写入 `~/.config/magpie-tianshu/connection.json`。
@@ -64,15 +64,15 @@
 Magpie 聚合的多个订阅源会按模型前缀自动归类到独立渠道，同时完整守护你在天枢里维护的所有自有供应商与个性化配置：
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/LUMOGRESS/magpie-agent-Tianshu-harness/v2.5.0/assets/channel-sync.svg" alt="按订阅分渠道与无损还原示意图" width="100%" />
+  <img src="https://raw.githubusercontent.com/LUMOGRESS/magpie-agent-Tianshu-harness/master/assets/channel-sync.svg" alt="按订阅分渠道与无损还原示意图" width="100%" />
 </p>
 
 | Magpie 中的模型示例 | 写入天枢的渠道键 | 说明 |
 | :--- | :--- | :--- |
-| `ai666/kimi-k3.1-pro` | `ai666-magpie` | 按首个 `/` 前的订阅前缀规范化生成 |
-| `trae-cn/qwen4-max` | `trae-cn-magpie` | 各订阅独立分组，在天枢设置页一目了然 |
-| `auto/glm-5.3-flash` / 无前缀模型 | `auto-magpie` | 统一归入自动路由分组 |
-| 你手配的 `deepseek` / `magpie` / `minimax: null` | **原样保留** | 绝不占用 `magpie` 键，不覆盖自有供应商、不复活已删除的预设墓碑 |
+| `provider-a/model-pro` | `provider-a-magpie` | 按首个 `/` 前的订阅前缀规范化生成 |
+| `provider-b/model-fast` | `provider-b-magpie` | 各订阅独立分组，在天枢设置页一目了然 |
+| `auto/default` / 无前缀模型 | `auto-magpie` | 统一归入自动路由分组 |
+| 你手配的 `custom-api` / `magpie` / `preset-x: null` | **原样保留** | 绝不占用 `magpie` 键，不覆盖自有供应商、不复活已删除的预设墓碑 |
 
 ---
 
@@ -93,7 +93,7 @@ magpie plugin add magpie-agent-tianshu-harness
 
 ```bash
 magpie models tianshu                  # 查看当前可选模型清单
-magpie tianshu ai666/kimi-k3.1-pro     # 选定默认模型并同步到天枢全部数据根
+magpie tianshu provider-a/model-pro    # 选定默认模型并同步到天枢全部数据根
 magpie tianshu                         # 查看当前绑定状态
 magpie tianshu default                 # 断开接入并无损恢复天枢原有配置
 ```
@@ -122,31 +122,31 @@ magpie tianshu default                 # 断开接入并无损恢复天枢原有
 ```json
 {
   "provider": {
-    "default": "ai666-magpie",
+    "default": "provider-a-magpie",
     "providers": {
       "auto-magpie": {
         "name": "auto-magpie",
-        "baseUrl": "http://127.0.0.1:3425/v1",
+        "baseUrl": "http://127.0.0.1:4321/v1",
         "endpointNetworkPolicy": {
-          "origin": "http://127.0.0.1:3425",
+          "origin": "http://127.0.0.1:4321",
           "allowPrivateNetwork": true
         },
         "protocol": "openai",
         "apiKey": "<magpie-gateway-key>",
         "models": [
           {
-            "id": "auto/glm-5.3-flash",
+            "id": "auto/default",
             "contextWindow": 1048576,
             "maxTokens": 65536
           }
         ],
         "userSaved": true
       },
-      "ai666-magpie": {
-        "name": "ai666-magpie",
-        "baseUrl": "http://127.0.0.1:3425/v1",
+      "provider-a-magpie": {
+        "name": "provider-a-magpie",
+        "baseUrl": "http://127.0.0.1:4321/v1",
         "endpointNetworkPolicy": {
-          "origin": "http://127.0.0.1:3425",
+          "origin": "http://127.0.0.1:4321",
           "allowPrivateNetwork": true
         },
         "protocol": "openai",
@@ -157,7 +157,7 @@ magpie tianshu default                 # 断开接入并无损恢复天枢原有
         },
         "models": [
           {
-            "id": "ai666/kimi-k3.1-pro",
+            "id": "provider-a/model-pro",
             "contextWindow": 262144,
             "maxTokens": 65536,
             "supportsVision": true,
@@ -173,7 +173,7 @@ magpie tianshu default                 # 断开接入并无损恢复天枢原有
     }
   },
   "agent": {
-    "defaultModel": "ai666-magpie:ai666/kimi-k3.1-pro"
+    "defaultModel": "provider-a-magpie:provider-a/model-pro"
   }
 }
 ```
@@ -199,7 +199,7 @@ magpie-tianshu restore    # 强制移除全部托管渠道并恢复天枢原配�
 - **为什么在天枢里切换了自己的内置模型，Magpie 后台刷新目录时没有把我改回去？**
   当你在 Magpie 中没有更换选中模型、仅发生订阅模型列表增删时，桥接会尊重你在天枢内手动切换的模型（除非你所选的托管模型已从 Magpie 下线）。
 - **绿色便携版解压在非标准盘符下检测不到怎么办？**
-  设置环境变量 `MAGPIE_TIANSHU_HOMES`（例如 `D:\Apps\Tianshu\TianshuData\.rivet`）或天枢自带的 `RIVET_HOME`，插件会优先同步该路径。
+  设置环境变量 `MAGPIE_TIANSHU_HOMES`（例如 `<自定义安装目录>\TianshuData\.rivet`）或天枢自带的 `RIVET_HOME`，插件会优先同步该路径。
 - **能否与其他天枢 Magpie 插件同时安装？**
   不能。所有天枢插件共用 Agent ID `tianshu`，请在同一台机器上仅保留一个天枢插件。
 
