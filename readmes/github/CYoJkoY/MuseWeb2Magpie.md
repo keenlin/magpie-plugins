@@ -272,8 +272,9 @@ Magpie 在会话到期前 10 分钟自动续期；续不上时额度卡片显示
 - 请求的 `Host` 必须是 `127.0.0.1`、`localhost` 或 `[::1]`（可带端口），其它一律 403 `host_not_allowed`：DNS rebinding 的页面到达端口时仍带着自己的域名，连免鉴权的 health 与登录进度页都读不到。
 - 插件把 `engine.key` 发给端口之前，先让端口证明自己持有这把密钥（health challenge，见 ADR 0004）：带 nonce 的 `/v1/health` 会回答一个只有 `engine.key` 持有者能算出的 HMAC。证明不了的端口（被抢注，或升级后仍在运行的旧引擎）拿不到密钥，插件会直接报「端口被占用」并请你重启 Magpie。
 - `engine.key` 和账号句柄只发给本机回环地址或 `https` 地址（见 ADR 0006）：用 `MUSE_WEB_ENGINE` 指向别的机器时必须是 `https`，明文 http 的局域网 / 域名地址会被直接拒绝、连接都不会建立。免鉴权的 `/v1/health` 只回答「引擎在、哪个版本」，不暴露账号数。
+- 免鉴权的登录进度页不做任何活：登录 ID 必须符合 `login_start` 发出去的形状（否则直接 404），没有驱动在跑时页面只回答「找不到这次登录」而不去拉起一个浏览器进程；同时处理的请求也有固定在飞上限（免鉴权页面 4 个、带密钥 64 个），超了就回 503 `engine_busy` 而不是排队把内存撑大（见 ADR 0008）。
 
-完整的威胁模型、必须保持的不变量和已知残留风险见 [`SECURITY.md`](SECURITY.md)；health challenge 的取舍见 [`docs/adr/0004-health-challenge.md`](docs/adr/0004-health-challenge.md)，凭据只走回环或 https 的取舍见 [`docs/adr/0006-credentials-over-the-wire.md`](docs/adr/0006-credentials-over-the-wire.md)。
+完整的威胁模型、必须保持的不变量和已知残留风险见 [`SECURITY.md`](SECURITY.md)；health challenge 的取舍见 [`docs/adr/0004-health-challenge.md`](docs/adr/0004-health-challenge.md)，凭据只走回环或 https 的取舍见 [`docs/adr/0006-credentials-over-the-wire.md`](docs/adr/0006-credentials-over-the-wire.md)，免鉴权面不做工与在飞上限的取舍见 [`docs/adr/0008-admission-control.md`](docs/adr/0008-admission-control.md)。
 
 <a name="readme-usage"></a>
 
@@ -343,6 +344,7 @@ magpie provider test muse-web          # 发一条真实的小请求，检查整
 | Agent 说它看不到你的文件，或让你自己运行命令 | 模型这次没按工具格式回答，重试或换种说法；日志里会是 `tools=…→text` |
 | 连不上 muse.ai | 检查网络，或用 `MUSE_WEB_PROXY` 指定代理 |
 | 提示端口被占用、无法证明持有 engine.key | 升级插件后旧版引擎可能还在跑。重启 Magpie（watchdog 会结束旧引擎），或手动结束占用该端口的进程 |
+| 偶发返回 503 `engine_busy` | 打给这个端口的请求太多，超过了引擎的在飞上限（免鉴权页面 4 个、带密钥请求 64 个），引擎拒绝而不是排队。响应带 `Retry-After`，稍后重试即可 |
 
 ### 错误码
 
@@ -358,6 +360,7 @@ magpie provider test muse-web          # 发一条真实的小请求，检查整
 | `vm_warming` | 503 | 账号虚拟机还在预热 | 10 秒后重试 |
 | `page_unavailable` | 503 | 页面没加载出来 | 10 秒后重试 |
 | `send_failed` | 503 | 消息没有发出去 | 重试 |
+| `engine_busy` | 503 | 引擎同时在处理的请求太多 | 稍后重试；`Retry-After: 1` |
 | `stream_interrupted` | SSE | 流式回答中途失败 | 重试该轮 |
 | `tool_call_not_parsed` | 422 | required / 指定工具没有被调用 | 重试或换模型 |
 
