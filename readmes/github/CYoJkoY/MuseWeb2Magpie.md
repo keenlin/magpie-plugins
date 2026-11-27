@@ -327,7 +327,7 @@ magpie provider test muse-web          # 发一条真实的小请求，检查整
 
 ## <img src="assets/readme/icons/troubleshooting.svg" width="24" height="24" alt=""> 排查问题
 
-先看数据目录里的 `engine.log`。每条请求一行，写明用了哪个账号、页面是复用（`kept`）还是新开（`new`）、是回到旧对话（`back`）还是开新对话（`new-thread`）、发了整段历史还是最新一条、首字用时；带工具的请求还会写 `tools=2→shell` 或 `tools=2→text`。
+先看数据目录里的 `engine.log`。每条请求一行（请求路径里的换行等控制字符会被换成空格，所以一条记录只会占一行），写明用了哪个账号、页面是复用（`kept`）还是新开（`new`）、是回到旧对话（`back`）还是开新对话（`new-thread`）、发了整段历史还是最新一条、首字用时；带工具的请求还会写 `tools=2→shell` 或 `tools=2→text`。
 
 | 现象 | 原因和处理 |
 | :--- | :--- |
