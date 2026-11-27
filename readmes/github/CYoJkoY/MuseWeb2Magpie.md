@@ -271,8 +271,9 @@ Magpie 在会话到期前 10 分钟自动续期；续不上时额度卡片显示
 - 引擎浏览器的 DevTools 端口只绑 `127.0.0.1` 且不带 `--remote-allow-origins=*`，所以账号资料目录里加载的网页连不上 CDP，控制不了浏览器、也读不到 muse.ai 会话；响应统一带 `nosniff`，不放缓存的默认 `no-store`，登录进度页另有 CSP、`X-Frame-Options: DENY` 和 `Referrer-Policy: no-referrer`。
 - 请求的 `Host` 必须是 `127.0.0.1`、`localhost` 或 `[::1]`（可带端口），其它一律 403 `host_not_allowed`：DNS rebinding 的页面到达端口时仍带着自己的域名，连免鉴权的 health 与登录进度页都读不到。
 - 插件把 `engine.key` 发给端口之前，先让端口证明自己持有这把密钥（health challenge，见 ADR 0004）：带 nonce 的 `/v1/health` 会回答一个只有 `engine.key` 持有者能算出的 HMAC。证明不了的端口（被抢注，或升级后仍在运行的旧引擎）拿不到密钥，插件会直接报「端口被占用」并请你重启 Magpie。
+- `engine.key` 和账号句柄只发给本机回环地址或 `https` 地址（见 ADR 0006）：用 `MUSE_WEB_ENGINE` 指向别的机器时必须是 `https`，明文 http 的局域网 / 域名地址会被直接拒绝、连接都不会建立。免鉴权的 `/v1/health` 只回答「引擎在、哪个版本」，不暴露账号数。
 
-完整的威胁模型、必须保持的不变量和已知残留风险见 [`SECURITY.md`](SECURITY.md)；health challenge 的取舍见 [`docs/adr/0004-health-challenge.md`](docs/adr/0004-health-challenge.md)。
+完整的威胁模型、必须保持的不变量和已知残留风险见 [`SECURITY.md`](SECURITY.md)；health challenge 的取舍见 [`docs/adr/0004-health-challenge.md`](docs/adr/0004-health-challenge.md)，凭据只走回环或 https 的取舍见 [`docs/adr/0006-credentials-over-the-wire.md`](docs/adr/0006-credentials-over-the-wire.md)。
 
 <a name="readme-usage"></a>
 
@@ -307,7 +308,7 @@ magpie provider test muse-web          # 发一条真实的小请求，检查整
 | `MUSE_WEB_VERIFY_LOGIN` | 设为 `0` 时登录后不发测试消息 | 发送 |
 | `MUSE_WEB_ENGINE_PORT` | 引擎端口 | `18611` |
 | `MUSE_WEB_HOME` | 数据目录 | 见上表 |
-| `MUSE_WEB_ENGINE` | 改用自己运行的引擎地址，插件不再自己启动引擎 | 插件自带 |
+| `MUSE_WEB_ENGINE` | 改用自己运行的引擎地址，插件不再自己启动引擎；凭据只发给本机回环或 `https` 地址，明文 http 的局域网 / 域名地址会被拒绝 | 插件自带 |
 | `MUSE_WEB_ENGINE_KEY` | 外部引擎的 `engine.key`；配合 `MUSE_WEB_ENGINE` 使用 | 读数据目录的 `engine.key` |
 | `MUSE_WEB_SITE` | 改用别的 muse.ai 兼容站点（测试 / 镜像） | `https://muse.ai` |
 
