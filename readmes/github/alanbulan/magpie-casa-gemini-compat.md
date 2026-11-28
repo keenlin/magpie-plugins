@@ -30,6 +30,13 @@ CASA 的 Gemini 流式响应可能把工具名称和参数拆成不同调用，�
 
 “工具通用”指客户端声明并执行的工具。厂商托管的 `web_search`、`file_search`、Google Search、代码执行与文档检索等需要独立执行器；插件遇到不支持的声明会明确报错。MagPie 自身提供的搜索与工具编排仍由 MagPie 负责。
 
+## 0.2.5 Claude Desktop 工具定义兼容
+
+- 修复合法 JSON Schema 2020-12 被误判为“工具 JSON Schema 无效”的 400。按声明分别使用 draft-06/07、2019-09、2020-12 校验器，保留各版本约束。
+- 支持同一请求混用不同草案，以及不同工具复用 `$id`；工具参数与结构化输出共用校验机制。
+- Gemini 类型转换只遍历 Schema 位置，保留业务数据、属性名和扩展字段。错误日志记录草案、问题类别及工具名哈希。
+- 124 项 Node 测试、32 项 Bun 重点测试通过；失败请求中的 48 个真实工具定义已通过候选代码及 GitHub 更新后本机 MagPie 的 JSON / SSE 两轮验收。可运行 `npm run audit:schema` 复核本机 MagPie；详见 [Claude 工具 Schema 修复](./docs/Claude工具Schema修复.md)。
+
 ## 0.2.4 输出与请求参数修复
 
 - 修复 Gemini `thinkingLevel` 在桥内丢失的问题，映射到上游 `reasoning_effort`。`thinking:drop` 只处理思考文本，不关闭请求的推理强度。
