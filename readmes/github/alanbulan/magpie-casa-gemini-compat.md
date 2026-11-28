@@ -30,14 +30,21 @@ CASA 的 Gemini 流式响应可能把工具名称和参数拆成不同调用，�
 
 “工具通用”指客户端声明并执行的工具。厂商托管的 `web_search`、`file_search`、Google Search、代码执行与文档检索等需要独立执行器；插件遇到不支持的声明会明确报错。MagPie 自身提供的搜索与工具编排仍由 MagPie 负责。
 
-## 0.2.0 更新
+## 0.2.3 更新
+
+- 新增大前缀宿主对账、完全相同请求的同步/流式直连对照，以及离线 CSV 账单核验工具。
+- 2026-11-28 通过本机 MagPie 实测约 4.2～5.4 万输入 token：Carbon 六轮中四轮由上游账单确认缓存折扣；Neon、Hydrogen 各六轮未命中。另八轮 Neon 直连对照命中三轮，同一请求也会命中后再次未命中。
+- Carbon 缓存估算比上游账单多 15～39 token，本组总输入误差 0.036%～0.093%。精确费用以厂商账单为准。详见 [大前缀与上游计费对账](./docs/大前缀与上游计费对账.md)。
+- 本版仅更新诊断脚本和文档，运行中的协议、缓存判定及模型路由与 0.2.2 相同。
+
+## 0.2.2 兼容修复
 
 - 原生用量记录归属 `casa`，显示原 Gemini 密钥账户与真实模型名，不再使用内部 `__responses` 等后缀。
 - 区分正文与结构化 `thinking` / `thought` / `extra_content.google.thought`；隔离开头的推理标签及带明确最终答复边界的推理前言。
 - 保留真实推理 token：OpenAI 输出包含推理，Gemini 的 `candidatesTokenCount` 与 `thoughtsTokenCount` 分开，合计不重复。
 - 移除逐 SSE 事件执行的路由中间件。插件页旧版“调用次数”是钩子次数，包含无关请求的空调用，不能作为付费请求数。
 
-离线测试 87 项通过，Bun 额外复核其中 27 项。真实 Neon 合成前缀实验观察到同步输入 12045 → 12061 → 1957，随后流式明确返回 10137 个缓存 token。完整验收与局限见 [统计与正文修复](./docs/统计与正文修复.md)。
+离线测试 89 项通过，Bun 额外复核其中 28 项。真实 Neon 合成前缀实验观察到同步输入 12045 → 12061 → 1957，随后流式明确返回 10137 个缓存 token。已通过原生 MagPie 的 12 个工具闭环和 24 条账本对账；另有 4 轮长前缀三层计量一致。完整验收与局限见 [统计与正文修复](./docs/统计与正文修复.md)。
 
 ## 从 GitHub 安装与更新
 
@@ -47,9 +54,9 @@ CASA 的 Gemini 流式响应可能把工具名称和参数拆成不同调用，�
 magpie plugin add github:alanbulan/magpie-casa-gemini-compat
 ```
 
-更新时可以将 GitHub 地址固定到本次提交：`magpie plugin add github:alanbulan/magpie-casa-gemini-compat#提交SHA`。MagPie 会替换同一个包并保留选项；仅重复添加未固定的地址可能沿用 Bun 锁文件中的旧提交，更新后应核对版本与提交号。
+更新时在 MagPie 的“插件 → 已安装”中点击该插件自己的“更新”按钮。使用不带 `#提交SHA` 的 GitHub 地址；本机 0.1.4572 在 CLI 更新后可能保留旧包名映射，固定提交形式会让正在运行的界面找不到包。更新后必须同时核对界面的版本、提交号与加载状态。
 
-安装后执行已安装包里的配置助手。它自动备份，只更改 CASA 的 Gemini 端点和本插件选项，不启动或重启 MagPie：
+安装后先在插件“选项”中保存 `{"nativeBridge":true,"bridgePort":41327,"legacyProvider":false}`，确认插件正常加载，再执行已安装包里的配置助手。它自动备份，只更改 CASA 的 Gemini 端点和本插件选项，不启动或重启 MagPie：
 
 ```sh
 node ~/.config/magpie/plugins/node_modules/magpie-casa-gemini-compat/scripts/configure-native.mjs enable
