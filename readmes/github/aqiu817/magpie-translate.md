@@ -30,8 +30,12 @@ The plugin host starts a local companion server (`127.0.0.1`, ports 3481–3484)
 
 ## Install
 
+Also in magpie's plugin market: magpie settings → 插件 → 发现, search "Translate".
+
+From the command line:
+
 ```
-magpie plugin add magpie-translate        # from npm (once published)
+magpie plugin add magpie-translate        # npm
 magpie plugin add github:aqiu817/magpie-translate
 magpie plugin add D:\path\to\magpie-translate   # local folder
 ```
