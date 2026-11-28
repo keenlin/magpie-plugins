@@ -14,7 +14,7 @@ A full-fledged provider plugin for [**magpie**](https://usemagpie.ai) and [**Ope
 - **Usage & balance reporting (`auth.usage`)**:
   - Reads `GET /paid/v1/usage` to surface your plan, PAYG balance, daily token allowance, RPM limits, Token Vault, Tokens V2, and Credits in Magpie's UI, `magpie quota`, and `GET /v1/magpie/quotas`.
 - **Sign-in flows (`auth.methods`)**:
-  - **BlazeAPI Key**: quick native API key entry (`sk-…`).
+  - **BlazeAPI Key**: quick native API key entry (`blaze-…`).
   - **BlazeAPI Key (verify & configure)**: validates your key live against BlazeAPI, identifies your account/plan, and lets you choose catalog scope (`all`, `available`, or `free`) and an optional custom Base URL.
 - **Smart error & routing handling**:
   - Preserves `X-Magpie-Sign-In: kept` on HTTP `402` (`price_above_cap`), `403` (plan/model restriction), and `429` (rate/daily limit) so Magpie failover moves to the next account/model without falsely expiring your key.
@@ -70,7 +70,7 @@ In Magpie (`plugins.json` or `magpie plugin options <plugin-spec> '<json>'`), yo
 | Option | Default | Description |
 | --- | --- | --- |
 | `baseURL` | `"https://api.blazeapi.org/paid/v1"` | Custom BlazeAPI-compatible base URL. |
-| `scope` | `"all"` | `"all"` (all chat models), `"available"` (only models your current balance/plan can call), or `"free"` (only `free/*` models). |
+| `scope` | `"available"` | `"available"` (only models your current balance/plan can call), `"all"` (all chat models including PAYG models with `$0` balance), or `"free"` (only `free/*` models). |
 | `protocol` | `"auto"` | `"auto"` (native Anthropic for Claude, Responses for GPT-5+/o-series/Codex, Chat Completions for the rest) or `"chat"` (force Chat Completions for all models). |
 | `providerRouting` | `""` | Set to `"cheapest"`, `"fastest"`, `"best"`, or provider names (e.g. `"sirius,cosmos"`) to send `X-Blaze-Provider`. |
 | `includeSearchModels` | `true` | Include Tavily search models (`tavily-*`). |
