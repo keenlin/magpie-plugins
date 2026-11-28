@@ -14,13 +14,13 @@ A full-fledged provider plugin for [**magpie**](https://usemagpie.ai) and [**Ope
 - **Usage & balance reporting (`auth.usage`)**:
   - Reads `GET /paid/v1/usage` to surface your plan, PAYG balance, daily token allowance, RPM limits, Token Vault, Tokens V2, and Credits in Magpie's UI, `magpie quota`, and `GET /v1/magpie/quotas`.
 - **Sign-in flows (`auth.methods`)**:
-  - **BlazeAPI Key**: quick native API key entry (`blaze-…`).
+  - **BlazeAPI Key**: quick native API key entry (`sk-…`).
   - **BlazeAPI Key (verify & configure)**: validates your key live against BlazeAPI, identifies your account/plan, and lets you choose catalog scope (`all`, `available`, or `free`) and an optional custom Base URL.
 - **Smart error & routing handling**:
   - Preserves `X-Magpie-Sign-In: kept` on HTTP `402` (`price_above_cap`), `403` (plan/model restriction), and `429` (rate/daily limit) so Magpie failover moves to the next account/model without falsely expiring your key.
-  - Optional `X-Blaze-Provider` routing header (`cheapest` or `fastest`).
+  - Optional `X-Blaze-Provider` routing header (`cheapest`, `fastest`, `best`, or comma-separated provider names such as `sirius,cosmos`).
 - **Magpie + OpenCode 1.x + OpenCode 2.x compatible**:
-  - Exports `{ BlazeApiPlugin }` from `./opencode.mjs` (`main` / `exports["./server"]`) for Magpie and OpenCode 1.x, and `{ id, setup }` from `./opencode2.mjs` (`exports["."]`) for OpenCode 2.x.
+  - Exports `{ BlazeApiPlugin }` from `./opencode.mjs` (`main`) for Magpie and OpenCode 1.x, and `{ id, setup }` from `./opencode2.mjs` (`exports["."]`) for OpenCode 2.x.
 
 ## Installation
 
@@ -45,7 +45,7 @@ Check status, models, and quota:
 
 ```sh
 magpie plugin
-magpie models blazeapi
+magpie provider models blazeapi
 magpie provider test blazeapi
 magpie quota
 ```
@@ -61,18 +61,18 @@ Add the plugin to your `opencode.json` (project or `~/.config/opencode/opencode.
 }
 ```
 
-Then run `opencode auth login` and select **BlazeAPI**.
+Then run `opencode auth login blazeapi` (or `opencode auth login` and select **BlazeAPI**).
 
 ## Plugin Options
 
-In Magpie (`plugins.json` or `magpie plugin options blazeapi '<json>'`), you can configure:
+In Magpie (`plugins.json` or `magpie plugin options <plugin-spec> '<json>'`), you can configure:
 
 | Option | Default | Description |
 | --- | --- | --- |
 | `baseURL` | `"https://api.blazeapi.org/paid/v1"` | Custom BlazeAPI-compatible base URL. |
 | `scope` | `"all"` | `"all"` (all chat models), `"available"` (only models your current balance/plan can call), or `"free"` (only `free/*` models). |
 | `protocol` | `"auto"` | `"auto"` (native Anthropic for Claude, Responses for GPT-5+/o-series/Codex, Chat Completions for the rest) or `"chat"` (force Chat Completions for all models). |
-| `providerRouting` | `""` | Set to `"cheapest"` or `"fastest"` to send `X-Blaze-Provider`. |
+| `providerRouting` | `""` | Set to `"cheapest"`, `"fastest"`, `"best"`, or provider names (e.g. `"sirius,cosmos"`) to send `X-Blaze-Provider`. |
 | `includeSearchModels` | `true` | Include Tavily search models (`tavily-*`). |
 | `includeTokV2` | `true` | Include `tokv2/*` models. |
 | `includeFree` | `true` | Include `free/*` models. |
@@ -81,7 +81,7 @@ In Magpie (`plugins.json` or `magpie plugin options blazeapi '<json>'`), you can
 Example:
 
 ```sh
-magpie plugin options blazeapi '{"providerRouting":"cheapest","scope":"available"}'
+magpie plugin options github:suwupnil/blaze-api-magpie '{"providerRouting":"cheapest","scope":"available"}'
 ```
 
 ## Development & Testing
