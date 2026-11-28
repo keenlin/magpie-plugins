@@ -30,6 +30,8 @@ CASA 的 Gemini 流式响应可能把工具名称和参数拆成不同调用，�
 
 “工具通用”指客户端声明并执行的工具。厂商托管的 `web_search`、`file_search`、Google Search、代码执行与文档检索等需要独立执行器；插件遇到不支持的声明会明确报错。MagPie 自身提供的搜索与工具编排仍由 MagPie 负责。
 
+2026-11-28 追加[真流式复测](./docs/真流式复测.md)：三个 Gemini 模型均观察到正文提前分段到达，单工具、并行工具及两轮结果回传通过；Carbon、Neon 绕开插件直连 CASA 的工具往返也通过。此前工具拆分故障本批未复现，缓存仍不稳定。生产默认继续使用同步轨道；`npm run audit:stream` 可独立复测，不改运行配置。
+
 ## 0.2.6 MagPie 升级兼容
 
 - 适配 MagPie 0.1.5037 的模型档位家族：将已配置 Gemini 基础模型衍生的 `-minimal/-low/-medium/-high/-xhigh` 传输名还原为 CASA Chat 模型名，并保留推理强度，修复升级后“模型不可用”的 404。
@@ -101,7 +103,7 @@ magpie plugin off github:alanbulan/magpie-casa-gemini-compat
 
 默认配置位于 [config.json](./config.json)，严格结构见 [config.schema.json](./config.schema.json)。需要自定义时，将配置复制到插件目录之外，通过 MagPie `plugins.json` 中该插件条目的 `options.configPath` 指向它；不要改动其他插件条目。完整示例见 [配置说明](./docs/配置说明.md)。
 
-默认是轨道 A（同步整包），每 8 秒发送 `: keep-alive` 注释。轨道 B 需要显式 `streamVerified:true`；当前 CASA 工具拆分故障下不建议启用。
+默认是轨道 A（同步整包），每 8 秒发送 `: keep-alive` 注释。轨道 B 需要显式 `streamVerified:true`；新版实测允许进一步试用，但不保证所有上游池和时段均正常，详见[真流式复测](./docs/真流式复测.md)。
 
 默认读取 `$XDG_CONFIG_HOME/magpie/providers.json`，未设置时读取 `~/.config/magpie/providers.json`。日志位于该配置目录下的 `plugin-work/casa-gemini-compat/diagnostics.jsonl`；`options.runtimeDir` 可以改位置。日志记录哈希、计数、结构掩码与重试轨迹，不记录真实密钥、用户正文或工具参数。会话默认只在内存保存，重启后会重新冷校准；可选 `sessions.statePath` 会把会话正文写入权限受限的本地状态文件，需自行管理保留时间。
 
