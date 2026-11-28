@@ -2,32 +2,12 @@
 
 **English** | [简体中文](README.zh-CN.md)
 
-An open-source, zero-dependency multi-device token usage dashboard plugin for [Magpie](https://github.com/yetone/magpie), using a dedicated private GitHub repository as a sanitized stats-only relay — with zero Magpie backup decryption keys, zero writes to `~/.config/magpie`, and zero external cron jobs.
+An open-source, zero-dependency multi-device token usage dashboard plugin for [Magpie](https://github.com/yetone/magpie). Built for running Magpie on multiple machines with independent configs — a primary workstation, headless servers, intermittently online laptops: each device publishes sanitized usage counters to a dedicated private GitHub repository, and any machine can view the combined dashboard without merging configs, exposing gateway ports, or handing Magpie's backup decryption passphrase to a plugin.
 
 ## Highlights
 
-- **Works immediately out of the box**: Displays your local machine's usage (both gateway requests and Magpie-discovered native agent sessions such as Claude Code, OpenCode, Codex, and Antigravity) even before configuring a GitHub relay.
-- **Magpie-native UI**: Matches Magpie's built-in Usage page layout, light/dark themes, and `--magpie-*` host tokens, with English and Chinese (`auto` / `en` / `zh`) language selection in Settings.
-- **Independent multi-device aggregation**: Combines workstations, laptops, and headless `magpie serve` nodes without merging configs, providers, or sync targets.
-- **Zero decryption passphrase**: Never touches Magpie backups, credentials, or sync keys; relays only sanitized aggregate counters via conflict-free per-device JSON files.
-- **Pure ESM, zero runtime dependencies**: Runs cleanly on Magpie's bundled Bun host and Node.js 22+.
-
-## Why this plugin exists
-
-Magpie's built-in sync supports sharing usage across machines, but ties every machine to a single sync target and shares one encryption passphrase between full configuration backups (`.magpie-backup`) and usage files (`.magpie-usage`).
-
-When you run Magpie across multiple machines with independent configurations — such as a primary workstation, headless servers, and intermittently online laptops — this plugin gives you a unified token usage dashboard without:
-
-- Merging configs, providers, or sync targets across machines;
-- Exposing Magpie gateway ports or requiring Tailscale, public IPs, or SSH access;
-- Providing Magpie's backup decryption passphrase to a third-party plugin.
-
-## How it works
-
-1. **Reads local usage from Magpie**: Incrementally pulls this machine's own usage feed from Magpie's loopback gateway API (`GET /v1/magpie/usage/requests?computer=this&cursor=...`), including both gateway traffic and native agent sessions discovered by Magpie.
-2. **Syncs headless servers automatically**: Uses Magpie's read-only async `magpie.hooks` (`onResponse`, debounced) so headless `magpie serve` nodes publish updates automatically without external cron jobs.
-3. **Publishes atomically to a dedicated private GitHub repo**: Writes sanitized monthly snapshots and a manifest into conflict-free per-device folders using the Git Data API (single atomic commit with compare-and-swap ref updates), strictly refusing public repositories before any read or write.
-4. **Aggregates on read inside Magpie**: Renders combined and per-device totals, two-tone daily usage bars, clickable device filter rows, and tabbed **Agents / Models / Providers** breakdowns. When a remote device fails or is offline, its last hash-verified cached snapshot is preserved and flagged as cached.
+- **Works out of the box**: local usage (gateway requests plus Magpie-discovered Claude Code, OpenCode, Codex, and Antigravity sessions) renders with zero setup.
+- **Independent multi-device aggregation**: workstations, laptops, and headless `magpie serve` nodes publish automatically via Magpie's read-only hooks — no external cron jobs.
 
 ## Installation
 
@@ -50,30 +30,30 @@ Open **Multi-Device Usage** (**多端用量**) in the Magpie sidebar — local u
 
 ### 1. Create a dedicated private GitHub repository
 
-Create a new **Private** GitHub repository dedicated solely to sanitized usage stats (for example, `<you>/magpie-usage-stats`) and initialize its default branch (such as `main` with a README).
+Create a new **Private** repository solely for sanitized usage stats (for example, `<you>/magpie-usage-stats`) and initialize its default branch (such as `main` with a README).
 
 > [!IMPORTANT]
 > Do **not** reuse your Magpie configuration sync repository, and do **not** use a public repository. This plugin verifies `private === true` before every read and ref update, and refuses public repositories (`PUBLIC_REPO_REFUSED`).
 
-### 2. Create a Fine-grained GitHub PAT
+### 2. Create a fine-grained PAT
 
-Create a GitHub **Fine-grained personal access token** scoped strictly to **Only select repositories → your dedicated stats repo**:
+Create a GitHub **fine-grained personal access token** scoped strictly to **Only select repositories → your dedicated stats repo**, choosing permissions by what each machine will do:
 
-- **Publishing machine** (workstation or headless server): `Contents: Read and write` (GitHub automatically includes `Metadata: Read-only`).
-- **View-only machine** (optional read-only dashboard): `Contents: Read-only` (uncheck **Publish this machine's usage** in Settings).
+- Machines that publish their own usage: `Contents: Read and write`.
+- Machines that only view the combined dashboard: `Contents: Read-only`, and turn off **Publish this machine's usage** in Settings.
 
 ### 3. Configure each machine
 
-- **Magpie Desktop / `magpie web`**:
-  1. Open **Multi-Device Usage** in the Magpie sidebar and click the **Settings** gear icon.
-  2. Set **Device display name** (optional), **Private GitHub repository** (`owner/repo`), and **GitHub Fine-grained PAT**.
-  3. Click **Test connection**, then **Save and sync**.
-- **Headless `magpie serve` node**:
-  1. Set non-sensitive options (`repo`, `deviceName`, `pushEnabled`, `pushIntervalSec`) via `magpie plugin options`.
-  2. Supply the GitHub PAT via the environment variable `MAGPIE_MULTI_USAGE_GITHUB_TOKEN` (or store `{"githubToken":"..."}` in `<dataDir>/credentials.json` with strict mode `0600`). Never place a PAT in plaintext `plugins.json`.
+- **Magpie Desktop / `magpie web`**: open **Multi-Device Usage** → **Settings** gear → set **Device display name** (optional), **Private GitHub repository** (`owner/repo`), and **PAT** → **Test connection** → **Save and sync**.
+- **Headless `magpie serve` node**: set non-sensitive options (`repo`, `deviceName`, `pushEnabled`, `pushIntervalSec`) via `magpie plugin options`, and supply the PAT via `MAGPIE_MULTI_USAGE_GITHUB_TOKEN` (or a `0600`-mode `<dataDir>/credentials.json`) — never in plaintext `plugins.json`.
 
 > [!NOTE]
-> Automatic background publishing on headless servers is triggered after completed gateway requests. If a headless machine routes zero traffic through Magpie's gateway (100% direct native agent sessions only), open the plugin page or trigger a refresh to publish those sessions.
+> Background publishing on headless servers triggers after completed gateway requests. If a node routes zero traffic through the gateway, open the plugin page or trigger a refresh once to publish those sessions.
+
+## How it works
+
+1. Each device incrementally pulls its own usage from Magpie's loopback API and publishes sanitized monthly snapshots into its own `<prefix>/<device-id>/` folder — one atomic commit per device, no cross-machine conflicts.
+2. Any machine aggregates on read: combined and per-device totals, two-tone daily bars, clickable device filters, and tabbed **Agents / Models / Providers** breakdowns. Offline devices keep their last hash-verified cached snapshot, flagged as cached.
 
 ## Configuration reference
 
@@ -121,21 +101,18 @@ Only aggregate counters (`calls`, `errors`, `excludedForwarded`, `input`, `outpu
 - **Cache hit rate**: `cacheRead / (input + cacheRead + cacheWrite)`, matching Magpie's `Totals.HitRate()`.
 - **Forwarding deduplication**: Calls with a non-empty `via` field are excluded by default (`filterForwarded: true`) and reported in the `forwarded excluded` counter.
 
-## Privacy and security guarantees
+## Privacy and security
 
-- Never asks for or reads Magpie's backup decryption passphrase, `.magpie-backup`, `.magpie-usage`, `providers.json`, `logins.json`, `sync.json`, or `plugin-auth.json`.
-- Never writes to `~/.config/magpie/*`; all plugin state, caches, and credentials live in an isolated data directory outside Magpie's configuration folder.
-- Never uploads prompts, model responses, provider keys, account emails, or client IPs.
-- Re-verifies `private === true` and immutable `repoId` before reads and ref updates, refusing public repositories (`PUBLIC_REPO_REFUSED`).
-- Stores GitHub PATs only in `0600` `<dataDir>/credentials.json` (refusing group/world-readable files on POSIX) or `MAGPIE_MULTI_USAGE_GITHUB_TOKEN`, never in `plugins.json`, logs, or API responses.
-- Binds the local page service strictly to `127.0.0.1` with loopback `Host`/`Origin`/navigation checks, scoped `Origin: null` sandbox CORS, and a random per-process `X-Multi-Usage-Token` header.
+- Never reads or asks for Magpie's backup decryption passphrase or any credentials, and never writes to `~/.config/magpie`; plugin data lives in its own directory.
+- The relay repository stores only aggregate counters and dimension labels — never prompts, responses, keys, emails, or IPs.
+- PATs are stored only in an environment variable or a `0600`-mode `credentials.json`; the local page listens only on `127.0.0.1`.
 
-## Troubleshooting
+## FAQ
 
-- **`PUBLIC_REPO_REFUSED`**: The configured repository is public. Switch to a dedicated private repository.
-- **`BRANCH_NOT_FOUND` on Test connection**: Initialize the target branch on GitHub first (for example, add an initial README when creating the repo).
-- **Device name shows hostname (e.g. `dev`)**: Set a friendly name in **Settings → Device display name** and click **Save and sync**.
-- **Reset local plugin state**: Remove `<dataDir>` (`~/.local/share/magpie-multi-usage` by default); your Magpie history in `~/.config/magpie` is untouched and will re-ingest cleanly on next open.
+- **`PUBLIC_REPO_REFUSED`**: the configured repository is public; switch to a dedicated private one.
+- **`BRANCH_NOT_FOUND` on Test connection**: the target branch isn't initialized yet; create it on GitHub first (for example, add a README when creating the repo).
+- **Device name shows the hostname**: set a friendly name in **Settings → Device display name**, then save and sync.
+- **Want to reset local plugin state**: remove `<dataDir>` (default `~/.local/share/magpie-multi-usage`); Magpie's own data is untouched and re-ingests cleanly on next open.
 
 ## Documentation & development
 

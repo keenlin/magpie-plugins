@@ -30,6 +30,14 @@ CASA 的 Gemini 流式响应可能把工具名称和参数拆成不同调用，�
 
 “工具通用”指客户端声明并执行的工具。厂商托管的 `web_search`、`file_search`、Google Search、代码执行与文档检索等需要独立执行器；插件遇到不支持的声明会明确报错。MagPie 自身提供的搜索与工具编排仍由 MagPie 负责。
 
+## 0.2.4 输出与请求参数修复
+
+- 修复 Gemini `thinkingLevel` 在桥内丢失的问题，映射到上游 `reasoning_effort`。`thinking:drop` 只处理思考文本，不关闭请求的推理强度。
+- 客户端未指定输出预算时，CASA 通道补充 `max_tokens:65536`；显式预算原样保留。同步等待上限调至 600 秒，SSE 注释心跳保持 8 秒。
+- 保留 Responses / Gemini / Anthropic 的 JSON 输出约束，标题请求仍交给原模型处理；Hook 不重写或吞掉标题。
+- 输出预算耗尽时正确返回 `response.incomplete` / `length` / `max_tokens` / `MAX_TOKENS`，不发送截断的可执行工具参数。
+- 新增不含正文的预算、推理档位、输出格式与结束原因诊断，使用 `npm run audit:parameters` 可验证已运行的本机 MagPie。Node 105 项测试与 Bun 29 项重点复核通过；已从 GitHub 更新后验证四协议标题、真实 22,972 token 长输出和 CASA 网页推理强度。详情见 [输出、推理与标题修复](./docs/输出推理与标题修复.md)。
+
 ## 0.2.3 更新
 
 - 新增大前缀宿主对账、完全相同请求的同步/流式直连对照，以及离线 CSV 账单核验工具。
