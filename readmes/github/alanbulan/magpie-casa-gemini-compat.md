@@ -30,6 +30,13 @@ CASA 的 Gemini 流式响应可能把工具名称和参数拆成不同调用，�
 
 “工具通用”指客户端声明并执行的工具。厂商托管的 `web_search`、`file_search`、Google Search、代码执行与文档检索等需要独立执行器；插件遇到不支持的声明会明确报错。MagPie 自身提供的搜索与工具编排仍由 MagPie 负责。
 
+## 0.2.6 MagPie 升级兼容
+
+- 适配 MagPie 0.1.5037 的模型档位家族：将已配置 Gemini 基础模型衍生的 `-minimal/-low/-medium/-high/-xhigh` 传输名还原为 CASA Chat 模型名，并保留推理强度，修复升级后“模型不可用”的 404。
+- 完整配置名、显式推理档位及预算优先，不猜测 `-max` 等模型名，也不提升模型本身不支持的档位。
+- 诊断同时记录传输模型、上游模型和上游档位；新增 `npm run audit:effort` 核对本机 MagPie 四协议请求与原厂商账本。
+- 126 项 Node 测试、50 项 Bun 重点测试通过；Carbon/high 与 Neon/xhigh 候选代码真实请求通过。宿主更新后的结果与标题问题边界见 [升级与推理档位修复](./docs/升级与推理档位修复.md)。
+
 ## 0.2.5 Claude Desktop 工具定义兼容
 
 - 修复合法 JSON Schema 2020-12 被误判为“工具 JSON Schema 无效”的 400。按声明分别使用 draft-06/07、2019-09、2020-12 校验器，保留各版本约束。
@@ -63,7 +70,7 @@ CASA 的 Gemini 流式响应可能把工具名称和参数拆成不同调用，�
 
 ## 从 GitHub 安装与更新
 
-兼容基线是 MagPie `0.1.4572`。先保留原 `casa` 供应商、Chat Completions 地址和名为 `gemini` 的已启用密钥。三个 Gemini 模型的 API 应在 MagPie 中设为 `gemini`。
+兼容基线为 MagPie `0.1.4572`，0.2.6 增加 `0.1.5037` 的档位模型名适配。旧宿主存在 Gemini 4 `xhigh` 降为 `high` 的问题，需要升级宿主才能保留最高档位。先保留原 `casa` 供应商、Chat Completions 地址和名为 `gemini` 的已启用密钥。三个 Gemini 模型的 API 应在 MagPie 中设为 `gemini`。
 
 ```sh
 magpie plugin add github:alanbulan/magpie-casa-gemini-compat
