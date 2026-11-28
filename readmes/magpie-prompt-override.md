@@ -27,17 +27,27 @@
 
 两个条件是 AND：都填就都要对上，填一个就只管那一个。
 
-- **不区分大小写**，按请求里的名字精确比对。
-- `target_model` 结尾带 `*` 是**前缀匹配**：`glm-5*` 命中 `glm-5.2`、`glm-5.3-flash`。
+- **不区分大小写**。
+- `target_model` 结尾带 `*` 是**前缀匹配**：`kimi-k3*` 命中 `workbuddy/kimi-k3.1-pro`。
+- **模型 id 是 `<provider>/<model>` 形式**，网关上就是长这样：
+
+  ```
+  codex/gpt-6.2-sol
+  workbuddy/deepseek-v4.1-flash
+  raccoon/sn-deepseek-v4-1-flash-1017
+  ```
+
+  填**短名**（`gpt-6.2-sol`）和填**全串**（`codex/gpt-6.2-sol`）都算命中。
 - 模型名从请求体的 `model` 取；Gemini 把模型名放在 URL 上，body 里没有，这时退回 `ctx.model`。
-- 供应商名从 `ctx` 取。`ctx` 上这个字段没有正式契约，中间件按候选表逐个试：
+- 供应商名**优先从 `ctx` 取**。`ctx` 上这个字段没有正式契约，中间件按候选表逐个试：
   `provider` / `provider_name` / `providerName` / `provider_id` / `upstream` /
   `upstream_name` / `upstreamName` / `upstream_id` / `channel` / `channel_name` /
   `channelName` / `route` / `route_name` / `vendor`，值可以是字符串或 `{name,id,slug}`
   对象；再不行就看 `ctx.request` 与 `ctx.meta` 里的同名字段。
-- **配置了却取不到，就不替换**（fail-closed）。拿不到供应商名还硬替换，等于把
-  别的渠道的提示词一起换掉——那比「这次没生效」难查得多。页面上看到「提示词没生效」
-  而模型明显在范围内时，先确认 `ctx` 里到底有没有供应商字段。
+- **`ctx` 取不到时，用模型 id 斜杠前那段作供应商**（`codex/gpt-6.2-sol` → `codex`）。
+  这才是最可靠的信息源，不必依赖 `ctx` 有没有那个字段。
+- 两个来源都拿不到才**不替换**（fail-closed）。拿不到供应商名还硬替换，等于把
+  别的渠道的提示词一起换掉——那比「这次没生效」难查得多。
 
 范围外的请求一个字节都不动，连协议都不识别。
 

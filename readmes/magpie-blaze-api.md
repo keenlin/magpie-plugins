@@ -26,6 +26,13 @@ A full-fledged provider plugin for [**magpie**](https://usemagpie.ai) and [**Ope
 
 ### In Magpie
 
+From npm (searchable in Magpie's Discover → Plugins):
+
+```sh
+magpie plugin add magpie-blaze-api
+magpie plugin login blazeapi
+```
+
 From GitHub:
 
 ```sh
@@ -36,7 +43,7 @@ magpie plugin login blazeapi
 From a local clone:
 
 ```sh
-git clone https://github.com/suwupnil/blaze-api-magpie.git
+git clone https://github.com/suwupnil/magpie-blaze-api.git
 magpie plugin add ./blaze-api-magpie
 magpie plugin login blazeapi
 ```
@@ -57,7 +64,7 @@ Add the plugin to your `opencode.json` (project or `~/.config/opencode/opencode.
 ```json
 {
   "$schema": "https://opencode.ai/config.json",
-  "plugin": ["github:suwupnil/blaze-api-magpie"]
+  "plugin": ["magpie-blazeapi-auth"]
 }
 ```
 
